@@ -1,0 +1,175 @@
+{% set active_page = 'home' %}
+{% extends "base.html" %}
+{% block title %}TruthLens AI - Digital Integrity Guaranteed{% endblock %}
+{% block content %}
+<!-- Hero Section -->
+<section class="relative py-12 md:py-24 overflow-hidden rounded-xl bg-primary-container text-on-primary">
+    <div class="absolute inset-0 opacity-10 grid-bg"></div>
+    <div class="relative z-10 px-gutter md:px-12 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+        <div class="max-w-2xl">
+            <h1 class="font-display-lg text-display-lg text-white mb-4 leading-tight">진실을 확인하세요</h1>
+            <p class="font-body-md text-body-md text-on-primary-container mb-8 opacity-90 max-w-lg">
+                이미지, 영상, 텍스트, 문서에 대한 고도화된 AI 탐지 기능을 제공합니다. 전문가급 검증 도구로 진실을 보호하세요.
+            </p>
+            <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                <a href="#detection-suite" class="bg-electric-blue text-white font-title-md text-title-md px-8 py-4 rounded-xl shadow-lg shadow-electric-blue/20 hover:scale-105 transition-transform active:scale-95 no-underline flex items-center justify-center">
+                    분석 시작
+                </a>
+                <div class="flex items-center gap-2 px-4 border border-outline-variant/30 rounded-xl bg-white/5 backdrop-blur-sm">
+                    <span class="font-label-mono text-label-mono text-electric-blue">120만 건 이상의 콘텐츠 검증 완료</span>
+                </div>
+            </div>
+        </div>
+        <div class="w-full max-w-sm hidden md:block">
+            <div class="relative aspect-square rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 overflow-hidden group">
+                <div class="scanning-line absolute top-0 left-0 w-full z-20"></div>
+                <img class="w-full h-full object-cover rounded-lg opacity-40 group-hover:scale-110 transition-transform duration-700" data-alt="A high-tech digital forensic interface showcasing complex data visualizations and artificial intelligence neural network patterns." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvq1UEyzpurLn_fim3S3hOWDFwhWqdZq84kluezEdMwzxptm2YC3eMkpk6qknCeVS9NO_WkcOwWAi8Yurcd7BYQuztapv_xd5r265waPQG86U4HiYZ-yxE3t9AiOFj85q0gwMQ9llyYoRgsl3Mksfmee6K0c9biY9NKjmQfWfA1bJhTRlnlpaUjWFZsei2CADD4GExDU6hkij8qM6LwSj3Ol8BHTH-c04JSInLKIxnypdeN1dTYXJUQ9H6D7CJhzhGhR7O_ltZfA"/>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-6xl text-electric-blue animate-pulse">verified_user</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Detection Mode Selector -->
+<section id="detection-suite" class="mt-section-gap">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+            <h2 class="font-headline-lg text-headline-lg text-deep-navy mb-2">탐지 스위트</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">특화된 포렌식 분석 경로를 선택하세요.</p>
+        </div>
+        <div class="font-label-mono text-label-mono text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">
+            모드 선택
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Video Analysis -->
+        <a href="{{ url_for('video.detect_video_page') }}" class="group relative flex flex-col text-left bg-white border border-outline-variant p-6 rounded-xl hover:border-electric-blue transition-all duration-300 hover:shadow-xl hover:shadow-electric-blue/5 no-underline text-on-surface">
+            <div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mb-6 text-deep-navy group-hover:bg-electric-blue group-hover:text-white transition-colors">
+                <span class="material-symbols-outlined">videocam</span>
+            </div>
+            <h3 class="font-title-md text-title-md mb-2 text-deep-navy">영상 분석</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">딥페이크 탐지, 시간적 결함 분석, 안면 일관성 검사.</p>
+            <div class="mt-auto font-label-mono text-label-mono text-electric-blue flex items-center gap-2 group-hover:gap-4 transition-all">
+                워크스페이스 시작 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </div>
+        </a>
+        <!-- Image Analysis -->
+        <a href="{{ url_for('image.detect_image_page') }}" class="group relative flex flex-col text-left bg-white border border-outline-variant p-6 rounded-xl hover:border-electric-blue transition-all duration-300 hover:shadow-xl hover:shadow-electric-blue/5 no-underline text-on-surface">
+            <div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mb-6 text-deep-navy group-hover:bg-electric-blue group-hover:text-white transition-colors">
+                <span class="material-symbols-outlined">image</span>
+            </div>
+            <h3 class="font-title-md text-title-md mb-2 text-deep-navy">이미지 분석</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">AI 생성 이미지 탐지, 픽셀 패턴 분석, 메타데이터 정밀 조사.</p>
+            <div class="mt-auto font-label-mono text-label-mono text-electric-blue flex items-center gap-2 group-hover:gap-4 transition-all">
+                워크스페이스 시작 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </div>
+        </a>
+        <!-- News Analysis -->
+        <a href="{{ url_for('news.detect_news_page') }}" class="group relative flex flex-col text-left bg-white border border-outline-variant p-6 rounded-xl hover:border-electric-blue transition-all duration-300 hover:shadow-xl hover:shadow-electric-blue/5 no-underline text-on-surface">
+            <div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mb-6 text-deep-navy group-hover:bg-electric-blue group-hover:text-white transition-colors">
+                <span class="material-symbols-outlined">newspaper</span>
+            </div>
+            <h3 class="font-title-md text-title-md mb-2 text-deep-navy">뉴스 분석</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">가짜 뉴스 검증, 출처 신뢰도 교차 참조, 언어 모델링 분석.</p>
+            <div class="mt-auto font-label-mono text-label-mono text-electric-blue flex items-center gap-2 group-hover:gap-4 transition-all">
+                워크스페이스 시작 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </div>
+        </a>
+        <!-- Paper Analysis -->
+        <a href="{{ url_for('paper.detect_paper_page') }}" class="group relative flex flex-col text-left bg-white border border-outline-variant p-6 rounded-xl hover:border-electric-blue transition-all duration-300 hover:shadow-xl hover:shadow-electric-blue/5 no-underline text-on-surface">
+            <div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mb-6 text-deep-navy group-hover:bg-electric-blue group-hover:text-white transition-colors">
+                <span class="material-symbols-outlined">description</span>
+            </div>
+            <h3 class="font-title-md text-title-md mb-2 text-deep-navy">문서 분석</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">학술적 정직성 스캐닝, PDF 출처 추적, LLM 생성 텍스트 탐지.</p>
+            <div class="mt-auto font-label-mono text-label-mono text-electric-blue flex items-center gap-2 group-hover:gap-4 transition-all">
+                워크스페이스 시작 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- Bento Layout: Recent Verifications & Global Stats -->
+<section class="mt-section-gap grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Recent Verifications -->
+    <div class="lg:col-span-2 bg-white border border-outline-variant rounded-xl p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-title-md text-title-md text-deep-navy">최근 검증 기록</h2>
+            <a href="{{ url_for('main.history') }}" class="font-label-mono text-label-mono text-on-surface-variant hover:text-electric-blue transition-colors no-underline">전체 보기</a>
+        </div>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-surface rounded-lg border border-outline-variant/30 hover:translate-x-1 transition-transform">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+                        <img class="w-full h-full object-cover" data-alt="A macro photograph of an open book with elegant typography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCbZD3O9NfrJHOyPbJUVMNFPbTWNvg-nrshC4Ayibi8Qw4LM_b79QRF9_bjfyORrOoi3XYcmlBBb1H4l68v_E0fnYcDOhXzKsDIjwKxzuoMzh6taN1263PWZtiotltX_sEM_Ncv9procpwCzfQvpXI_ktrHJbqI3LmelVD5VLe0p_UYLl7Q03jQOyf1uS6C5UwVc2b-ooD7FkvOHRQAFqjWqIGRv1V6vM4iqqAsxoDu4emHCRRipKd4DtDPnMwQzTHi7VbwgGoGQ"/>
+                    </div>
+                    <div>
+                        <div class="font-title-md text-body-md text-deep-navy">Manuscript_Verification_042.pdf</div>
+                        <div class="font-body-sm text-body-sm text-on-surface-variant">문서 분석 • 2분 전</div>
+                    </div>
+                </div>
+                <div class="px-3 py-1 bg-authentic-green/10 text-authentic-green rounded-full font-label-mono text-label-mono uppercase">AUTHENTIC</div>
+            </div>
+            <div class="flex items-center justify-between p-4 bg-surface rounded-lg border border-outline-variant/30 hover:translate-x-1 transition-transform">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+                        <img class="w-full h-full object-cover" data-alt="An abstract, high-contrast digital art piece featuring complex geometric layers." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbcZbLdcUr56GTjBEMsXtnF1uH1EfAgULpldJfHmxawJIPoKvxluZOSqkJoXURPc4-4WMJI9a2KHLl0Nsb5FTG1bcjvo097W7FAycsnZ2fqe-wuYrx2qJMWmxmd4z_rp4zTZrQchNPfrZWNpaSVJFl5A5gDcKwXKhjyVJjX-_qblanxhUiDAJf3jCTRAlUxlKDswC_QiXRFe3YRHTFzYqXsBoZNH9oMUplUrHieHFzuokTS-X2zNjluNPB-vejUk7c-ItgILPDNw"/>
+                    </div>
+                    <div>
+                        <div class="font-title-md text-body-md text-deep-navy">Social_Profile_Banner.jpg</div>
+                        <div class="font-body-sm text-body-sm text-on-surface-variant">이미지 분석 • 15분 전</div>
+                    </div>
+                </div>
+                <div class="px-3 py-1 bg-alert-red/10 text-alert-red rounded-full font-label-mono text-label-mono uppercase">AI DETECTED</div>
+            </div>
+            <div class="flex items-center justify-between p-4 bg-surface rounded-lg border border-outline-variant/30 hover:translate-x-1 transition-transform">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+                        <img class="w-full h-full object-cover" data-alt="A futuristic robot hand interacting with a floating digital holographic interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVQn-99w3QnkQVf17FTPk2aicDQH0cq6pbTPbuqdzrseTKk09ydyxTL6BUtU35TA8v1ggRuC7ZrzrxhscNmQLK-6u6GiYv7LopbU6THO2MBcvELIsW4EGl7DePZO1w0A1KdRpc49fHC1B4U3XTIj94D_Pmcg7vmf7hobqd9tK6y4GhUQ6QPti5pbqeXS7G17b0Pq4Qt5O-N8DXDi1v-UAOf00j6FbsV9LIb_BUTfbSbRJQE77TAflLVZuKU5yGeMspzWHUPW0PEQ"/>
+                    </div>
+                    <div>
+                        <div class="font-title-md text-body-md text-deep-navy">Political_Statement_Viral.mp4</div>
+                        <div class="font-body-sm text-body-sm text-on-surface-variant">영상 분석 • 42분 전</div>
+                    </div>
+                </div>
+                <div class="px-3 py-1 bg-suspicious-yellow/10 text-suspicious-yellow rounded-full font-label-mono text-label-mono uppercase">SUSPICIOUS</div>
+            </div>
+        </div>
+    </div>
+    <!-- Stats Card -->
+    <div class="bg-primary-container text-on-primary rounded-xl p-8 flex flex-col justify-between relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 opacity-10">
+            <span class="material-symbols-outlined text-9xl">analytics</span>
+        </div>
+        <div>
+            <span class="font-label-mono text-label-mono uppercase opacity-60 tracking-widest">글로벌 정직성 지표</span>
+            <h3 class="font-display-lg text-headline-lg mt-2">Analytical Precision</h3>
+        </div>
+        <div class="space-y-6 mt-8">
+            <div>
+                <div class="flex justify-between font-label-mono text-label-mono mb-2">
+                    <span>분석 정확도</span>
+                    <span>99.9%</span>
+                </div>
+                <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full bg-electric-blue w-[99.9%]"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label-mono text-label-mono mb-2">
+                    <span>일일 스캔 횟수</span>
+                    <span>42,801</span>
+                </div>
+                <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full bg-electric-blue w-[85%]"></div>
+                </div>
+            </div>
+        </div>
+        <button class="mt-8 border border-white/20 hover:bg-white/5 transition-colors w-full py-3 rounded-xl font-title-md text-body-md text-white">
+            엔터프라이즈로 업그레이드
+        </button>
+    </div>
+</section>
+{% endblock %}

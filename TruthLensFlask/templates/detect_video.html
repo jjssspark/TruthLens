@@ -1,0 +1,245 @@
+{% set active_page = 'detect' %}
+{% extends "base.html" %}
+{% block title %}영상 분석 - TruthLens AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upload-dashed {
+        background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23C8C5CC' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+    }
+    .active-tab {
+        border-bottom: 2px solid #0EA5E9;
+        color: #06070f;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">영상 분석</h2>
+    <p class="text-on-surface-variant font-body-sm mt-1">딥페이크 탐지, 시간적 결함 분석, 안면 일관성 검사를 위한 영상을 업로드하거나 URL을 입력하세요.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
+    <!-- Analysis Workspace -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+        <div class="glass-panel border border-outline-variant/30 rounded-xl overflow-hidden shadow-sm">
+            <!-- Custom Tab Navigation -->
+            <div class="flex border-b border-outline-variant/20 bg-surface-container-low">
+                <button class="flex-1 py-4 font-label-mono text-label-mono active-tab transition-all flex items-center justify-center gap-2" id="tab-file" onclick="switchTab('file')" type="button">
+                    <span class="material-symbols-outlined text-[18px]">upload_file</span>
+                    파일 업로드
+                </button>
+                <button class="flex-1 py-4 font-label-mono text-label-mono text-on-surface-variant hover:bg-surface-container-high/30 transition-all flex items-center justify-center gap-2" id="tab-url" onclick="switchTab('url')" type="button">
+                    <span class="material-symbols-outlined text-[18px]">link</span>
+                    URL
+                </button>
+            </div>
+            <div class="p-6">
+                <!-- File Upload Section -->
+                <div id="content-file">
+                    <div class="relative overflow-hidden upload-dashed rounded-xl p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white border-2 border-transparent transition-all duration-300 group hover:border-electric-blue/30" id="drop-zone">
+                        <div class="mb-6 p-6 bg-surface-container-low rounded-full group-hover:scale-110 transition-transform duration-300">
+                            <span class="material-symbols-outlined text-6xl text-on-surface-variant group-hover:text-electric-blue">videocam</span>
+                        </div>
+                        <div class="space-y-2 mb-8">
+                            <h3 class="font-title-md text-title-md text-on-surface" id="drop-zone-text">포렌식 자료를 드래그 앤 드롭 하세요</h3>
+                            <p class="text-body-sm text-on-surface-variant">MP4, AVI, MOV, WEBM 지원</p>
+                            <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 500MB, 최대 10분 영상</p>
+                        </div>
+                        <label class="cursor-pointer">
+                            <input accept=".mp4,.avi,.mov,.webm" class="hidden" id="file-input" type="file"/>
+                            <div class="px-8 py-3 bg-deep-navy text-white font-semibold rounded-lg hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-2">
+                                <span class="material-symbols-outlined">upload_file</span>
+                                영상 업로드
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <!-- URL Input Section (hidden by default) -->
+                <div class="hidden space-y-4" id="content-url">
+                    <label class="block font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">영상 URL</label>
+                    <input id="video-url" class="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg px-4 py-4 focus:ring-2 focus:ring-electric-blue focus:border-deep-navy transition-all outline-none font-body-md" placeholder="https://www.youtube.com/watch?v=..." type="url"/>
+                    <div class="flex items-center gap-2 p-3 bg-secondary-container/10 rounded-lg border border-secondary-container/20">
+                        <span class="material-symbols-outlined text-secondary text-[20px]">info</span>
+                        <p class="text-body-sm text-secondary">YouTube, Vimeo 및 직접 링크된 영상 파일을 지원합니다.</p>
+                    </div>
+                </div>
+                <!-- Action Button -->
+                <div class="mt-8">
+                    <button class="w-full py-4 bg-surface-container-highest text-on-surface-variant font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled id="detect-button" type="button">
+                        <span class="material-symbols-outlined">document_scanner</span>
+                        정직성 탐지 시작
+                    </button>
+                    <p class="text-center text-label-mono text-label-mono text-on-surface-variant mt-4 opacity-70">
+                        기업급 포렌식 분석 • 256비트 암호화
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Sidebar / Guidelines -->
+    <aside class="lg:col-span-4 space-y-6">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-secondary">verified_user</span>
+                <h3 class="font-title-md text-title-md text-on-surface">분석 가이드라인</h3>
+            </div>
+            <ul class="space-y-4">
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">high_quality</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">고해상도 원본</p>
+                        <p class="text-body-sm text-on-surface-variant">압축되지 않은 원본 파일일수록 시간적 결함을 더 정확히 탐지합니다.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">face</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">인물이 포함된 영상</p>
+                        <p class="text-body-sm text-on-surface-variant">얼굴이 선명하게 보일수록 안면 일관성 검사 정확도가 높아집니다.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">timer</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">적정 길이</p>
+                        <p class="text-body-sm text-on-surface-variant">최대 10분까지 분석 가능하며, 짧은 클립일수록 결과가 빠릅니다.</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-8 p-4 bg-surface-container-low rounded-lg border-l-4 border-electric-blue">
+                <p class="text-body-sm italic text-on-surface-variant">
+                    "딥페이크는 시간이 지날수록 픽셀과 프레임 사이의 미세한 불일치를 남깁니다."
+                </p>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    const resultUrlTemplate = "{{ url_for('result.result_page', request_id=0) }}";
+
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const dropZoneText = document.getElementById('drop-zone-text');
+    const videoUrlInput = document.getElementById('video-url');
+    const detectButton = document.getElementById('detect-button');
+
+    let selectedFile = null;
+    let currentTab = 'file';
+
+    function switchTab(type) {
+        const fileBtn = document.getElementById('tab-file');
+        const urlBtn = document.getElementById('tab-url');
+        const fileContent = document.getElementById('content-file');
+        const urlContent = document.getElementById('content-url');
+
+        if (type === 'file') {
+            fileBtn.classList.add('active-tab');
+            fileBtn.classList.remove('text-on-surface-variant');
+            urlBtn.classList.remove('active-tab');
+            urlBtn.classList.add('text-on-surface-variant');
+            fileContent.classList.remove('hidden');
+            urlContent.classList.add('hidden');
+        } else {
+            urlBtn.classList.add('active-tab');
+            urlBtn.classList.remove('text-on-surface-variant');
+            fileBtn.classList.remove('active-tab');
+            fileBtn.classList.add('text-on-surface-variant');
+            urlContent.classList.remove('hidden');
+            fileContent.classList.add('hidden');
+        }
+        currentTab = type;
+        updateDetectButton();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            selectedFile = e.target.files[0];
+            dropZoneText.textContent = selectedFile.name;
+        }
+        updateDetectButton();
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files.length) {
+            selectedFile = e.dataTransfer.files[0];
+            dropZoneText.textContent = selectedFile.name;
+        }
+        updateDetectButton();
+    });
+
+    videoUrlInput.addEventListener('input', updateDetectButton);
+
+    function updateDetectButton() {
+        const ready = (currentTab === 'file' && selectedFile) || (currentTab === 'url' && videoUrlInput.value.trim());
+        detectButton.disabled = !ready;
+        if (ready) {
+            detectButton.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+            detectButton.classList.add('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
+        } else {
+            detectButton.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+            detectButton.classList.remove('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
+        }
+    }
+
+    detectButton.addEventListener('click', async () => {
+        const formData = new FormData();
+        if (currentTab === 'file') {
+            if (!selectedFile) return;
+            formData.append('file', selectedFile);
+        } else {
+            const url = videoUrlInput.value.trim();
+            if (!url) return;
+            formData.append('url', url);
+        }
+
+        detectButton.disabled = true;
+        detectButton.classList.add('opacity-80');
+        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+
+        try {
+            const res = await fetch("{{ url_for('video.detect_video_api') }}", {
+                method: 'POST',
+                body: formData,
+            });
+            const json = await res.json();
+            if (res.ok && json.status === 'success' && json.data.request_id) {
+                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
+            } else {
+                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                detectButton.disabled = false;
+                detectButton.classList.remove('opacity-80');
+                detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+            }
+        } catch (err) {
+            alert('분석 요청 중 오류가 발생했습니다.');
+            detectButton.disabled = false;
+            detectButton.classList.remove('opacity-80');
+            detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+        }
+    });
+</script>
+{% endblock %}

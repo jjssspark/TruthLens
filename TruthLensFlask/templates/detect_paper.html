@@ -1,0 +1,185 @@
+{% set active_page = 'detect' %}
+{% extends "base.html" %}
+{% block title %}문서 분석 - TruthLens AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upload-dashed {
+        background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23C8C5CC' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">문서 분석</h2>
+    <p class="text-on-surface-variant font-body-sm mt-1">학술적 정직성 스캐닝, PDF 출처 추적, LLM 생성 텍스트 탐지를 위한 논문을 업로드하세요.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
+    <!-- Analysis Workspace -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+        <!-- Upload Area -->
+        <div class="relative overflow-hidden upload-dashed rounded-xl p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white border-2 border-transparent transition-all duration-300 group hover:border-electric-blue/30" id="drop-zone">
+            <div class="mb-6 p-6 bg-surface-container-low rounded-full group-hover:scale-110 transition-transform duration-300">
+                <span class="material-symbols-outlined text-6xl text-on-surface-variant group-hover:text-electric-blue">description</span>
+            </div>
+            <div class="space-y-2 mb-8">
+                <h3 class="font-title-md text-title-md text-on-surface" id="drop-zone-text">포렌식 자료를 드래그 앤 드롭 하세요</h3>
+                <p class="text-body-sm text-on-surface-variant">PDF 파일 지원</p>
+                <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 50MB, 최대 200페이지</p>
+            </div>
+            <label class="cursor-pointer">
+                <input accept=".pdf" class="hidden" id="file-input" type="file"/>
+                <div class="px-8 py-3 bg-deep-navy text-white font-semibold rounded-lg hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-2">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    PDF 업로드
+                </div>
+            </label>
+        </div>
+        <!-- Selected File Preview -->
+        <div class="hidden items-center gap-4 p-4 bg-white rounded-xl border border-outline-variant" id="file-preview">
+            <div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-deep-navy shrink-0">
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+            </div>
+            <div class="overflow-hidden">
+                <p class="font-title-md text-body-md text-deep-navy truncate" id="file-name"></p>
+                <p class="font-body-sm text-body-sm text-on-surface-variant" id="file-size"></p>
+            </div>
+        </div>
+        <!-- Action Button -->
+        <div class="mt-4">
+            <button class="w-full py-4 bg-surface-container-highest text-on-surface-variant font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled id="detect-button" type="button">
+                <span class="material-symbols-outlined">document_scanner</span>
+                정직성 탐지 시작
+            </button>
+            <p class="text-center text-label-mono text-label-mono text-on-surface-variant mt-4 opacity-70">
+                기업급 포렌식 분석 • 256비트 암호화
+            </p>
+        </div>
+    </section>
+    <!-- Sidebar / Guidelines -->
+    <aside class="lg:col-span-4 space-y-6">
+        <div class="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-secondary">verified_user</span>
+                <h3 class="font-title-md text-title-md text-on-surface">분석 가이드라인</h3>
+            </div>
+            <ul class="space-y-4">
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">text_snippet</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">텍스트 기반 PDF</p>
+                        <p class="text-body-sm text-on-surface-variant">스캔 이미지보다 텍스트가 추출 가능한 PDF에서 정확도가 높습니다.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">format_quote</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">출처 및 인용 포함</p>
+                        <p class="text-body-sm text-on-surface-variant">참고문헌과 인용이 포함된 원본 문서일수록 출처 추적이 용이합니다.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">menu_book</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">전체 문서 업로드</p>
+                        <p class="text-body-sm text-on-surface-variant">일부 발췌가 아닌 전체 논문을 업로드하면 분석 신뢰도가 향상됩니다.</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-8 p-4 bg-surface-container-low rounded-lg border-l-4 border-electric-blue">
+                <p class="text-body-sm italic text-on-surface-variant">
+                    "LLM이 생성한 텍스트는 문체와 어휘 분포에 일관된 통계적 흔적을 남깁니다."
+                </p>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    const resultUrlTemplate = "{{ url_for('result.result_page', request_id=0) }}";
+
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const filePreview = document.getElementById('file-preview');
+    const fileNameEl = document.getElementById('file-name');
+    const fileSizeEl = document.getElementById('file-size');
+    const detectButton = document.getElementById('detect-button');
+
+    let selectedFile = null;
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+        filePreview.classList.remove('hidden');
+        filePreview.classList.add('flex');
+
+        detectButton.disabled = false;
+        detectButton.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+        detectButton.classList.add('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
+    }
+
+    detectButton.addEventListener('click', async () => {
+        if (!selectedFile) return;
+
+        detectButton.disabled = true;
+        detectButton.classList.add('opacity-80');
+        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        try {
+            const res = await fetch("{{ url_for('paper.detect_paper_api') }}", {
+                method: 'POST',
+                body: formData,
+            });
+            const json = await res.json();
+            if (res.ok && json.status === 'success' && json.data.request_id) {
+                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
+            } else {
+                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                detectButton.disabled = false;
+                detectButton.classList.remove('opacity-80');
+                detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+            }
+        } catch (err) {
+            alert('분석 요청 중 오류가 발생했습니다.');
+            detectButton.disabled = false;
+            detectButton.classList.remove('opacity-80');
+            detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+        }
+    });
+</script>
+{% endblock %}

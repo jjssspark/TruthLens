@@ -1,0 +1,23 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+.env.example
+
+.claude
+.understand-anything
+
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# 업로드 파일은 분석 후 삭제 대상이므로 추적하지 않음 (4.2 보안)
+uploads/*
+!uploads/.gitkeep

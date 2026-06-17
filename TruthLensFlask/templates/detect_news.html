@@ -1,0 +1,206 @@
+{% set active_page = 'detect' %}
+{% extends "base.html" %}
+{% block title %}TruthLens | 뉴스 정직성 검증{% endblock %}
+
+{% block extra_head %}
+<style>
+    .active-tab {
+        border-bottom: 2px solid #0EA5E9;
+        color: #06070f;
+    }
+    .scanning-line {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #0EA5E9, transparent);
+        box-shadow: 0 0 15px #0EA5E9;
+        animation: scanning 2s linear infinite;
+        position: absolute;
+        width: 100%;
+        z-index: 10;
+    }
+    @keyframes scanning {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<section class="mb-8">
+    <h2 class="font-headline-lg text-headline-lg text-deep-navy mb-2">뉴스 정직성 검증</h2>
+    <p class="text-on-surface-variant font-body-md">언어적 패턴, 사실적 일관성 및 AI 생성 마커를 분석할 콘텐츠를 제출하세요.</p>
+</section>
+
+<!-- Input Workspace (Bento Style) -->
+<div class="glass-panel border border-outline-variant/30 rounded-xl overflow-hidden shadow-sm max-w-3xl mx-auto">
+    <!-- Custom Tab Navigation -->
+    <div class="flex border-b border-outline-variant/20 bg-surface-container-low">
+        <button class="flex-1 py-4 font-label-mono text-label-mono active-tab transition-all flex items-center justify-center gap-2" id="tab-url" onclick="switchTab('url')" type="button">
+            <span class="material-symbols-outlined text-[18px]">link</span>
+            URL
+        </button>
+        <button class="flex-1 py-4 font-label-mono text-label-mono text-on-surface-variant hover:bg-surface-container-high/30 transition-all flex items-center justify-center gap-2" id="tab-text" onclick="switchTab('text')" type="button">
+            <span class="material-symbols-outlined text-[18px]">article</span>
+            텍스트
+        </button>
+    </div>
+    <div class="p-6">
+        <!-- URL Input Section -->
+        <div class="space-y-4" id="content-url">
+            <label class="block font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">소스 기사 URL</label>
+            <div class="relative group">
+                <input id="news-url" class="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg px-4 py-4 pr-24 focus:ring-2 focus:ring-electric-blue focus:border-deep-navy transition-all outline-none font-body-md" placeholder="https://news-source.com/article-path" type="url"/>
+                <button type="button" onclick="pasteFromClipboard()" class="absolute right-2 top-2 bottom-2 px-4 bg-deep-navy text-white rounded font-label-mono text-label-mono hover:bg-primary transition-colors active:scale-95">
+                    붙여넣기
+                </button>
+            </div>
+            <div class="flex items-center gap-2 p-3 bg-secondary-container/10 rounded-lg border border-secondary-container/20">
+                <span class="material-symbols-outlined text-secondary text-[20px]">info</span>
+                <p class="text-body-sm text-secondary">직접 URL 분석을 통해 메타데이터와 도메인 권위 검증이 가능합니다.</p>
+            </div>
+        </div>
+        <!-- Text Input Section (Hidden by default) -->
+        <div class="hidden space-y-4" id="content-text">
+            <div class="flex justify-between items-end">
+                <label class="block font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">콘텐츠 전사본</label>
+                <span class="font-label-mono text-[10px] text-on-surface-variant" id="char-count">0 / 10,000</span>
+            </div>
+            <div class="relative">
+                <textarea class="w-full h-80 bg-surface-container-lowest border border-outline-variant/50 rounded-lg p-4 focus:ring-2 focus:ring-electric-blue focus:border-deep-navy transition-all outline-none font-body-md resize-none" id="main-textarea" maxlength="10000" placeholder="기사 내용, 소셜 미디어 포스트 또는 스크립트를 여기에 붙여넣으세요..."></textarea>
+                <!-- Interactive scanning line (for visual feedback during 'Analyze') -->
+                <div class="scanning-line hidden" id="laser-scanner"></div>
+            </div>
+        </div>
+        <!-- Action Button -->
+        <div class="mt-8">
+            <button class="w-full bg-deep-navy text-white py-4 rounded-xl font-title-md flex items-center justify-center gap-3 hover:bg-primary transition-all active:scale-[0.98] shadow-lg shadow-deep-navy/10 group" id="analyze-button" type="button">
+                <span class="material-symbols-outlined group-hover:rotate-12 transition-transform">analytics</span>
+                소스 분석하기
+            </button>
+            <p class="text-center mt-4 text-on-surface-variant font-body-sm italic">
+                결과는 참고용으로만 제공됩니다.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Tech Accents / Visual Decoration -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+    <div class="p-4 rounded-lg border border-outline-variant/20 bg-surface-container-low/50">
+        <span class="material-symbols-outlined text-electric-blue mb-2">security</span>
+        <h4 class="font-title-md text-body-sm font-bold mb-1">포렌식 정밀도</h4>
+        <p class="text-body-sm text-on-surface-variant">40개 이상의 글로벌 팩트체크 데이터베이스와 교차 참조합니다.</p>
+    </div>
+    <div class="p-4 rounded-lg border border-outline-variant/20 bg-surface-container-low/50">
+        <span class="material-symbols-outlined text-electric-blue mb-2">language</span>
+        <h4 class="font-title-md text-body-sm font-bold mb-1">네트워크 분석</h4>
+        <p class="text-body-sm text-on-surface-variant">출처 패턴과 조직적인 봇 행동을 추적합니다.</p>
+    </div>
+    <div class="p-4 rounded-lg border border-outline-variant/20 bg-surface-container-low/50">
+        <span class="material-symbols-outlined text-electric-blue mb-2">radar</span>
+        <h4 class="font-title-md text-body-sm font-bold mb-1">AI 탐지</h4>
+        <p class="text-body-sm text-on-surface-variant">LLM 서명과 구문론적 이상 징후를 식별합니다.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    const resultUrlTemplate = "{{ url_for('result.result_page', request_id=0) }}";
+    let currentTab = 'url';
+
+    function switchTab(type) {
+        const urlBtn = document.getElementById('tab-url');
+        const textBtn = document.getElementById('tab-text');
+        const urlContent = document.getElementById('content-url');
+        const textContent = document.getElementById('content-text');
+
+        if (type === 'url') {
+            urlBtn.classList.add('active-tab');
+            urlBtn.classList.remove('text-on-surface-variant');
+            textBtn.classList.remove('active-tab');
+            textBtn.classList.add('text-on-surface-variant');
+            urlContent.classList.remove('hidden');
+            textContent.classList.add('hidden');
+        } else {
+            textBtn.classList.add('active-tab');
+            textBtn.classList.remove('text-on-surface-variant');
+            urlBtn.classList.remove('active-tab');
+            urlBtn.classList.add('text-on-surface-variant');
+            textContent.classList.remove('hidden');
+            urlContent.classList.add('hidden');
+        }
+        currentTab = type;
+    }
+
+    // Clipboard Paste Feature
+    async function pasteFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            document.getElementById('news-url').value = text;
+        } catch (err) {
+            alert('클립보드 접근 권한이 없거나 지원하지 않는 브라우저입니다.');
+        }
+    }
+
+    const textarea = document.getElementById('main-textarea');
+    const charCount = document.getElementById('char-count');
+
+    textarea.addEventListener('input', () => {
+        const length = textarea.value.length;
+        charCount.textContent = `${length.toLocaleString()} / 10,000`;
+        charCount.classList.toggle('text-alert-red', length > 9000);
+    });
+
+    const analyzeButton = document.getElementById('analyze-button');
+
+    analyzeButton.addEventListener('click', async () => {
+        const url = document.getElementById('news-url').value.trim();
+        const text = textarea.value.trim();
+
+        const formData = new FormData();
+        if (currentTab === 'url') {
+            if (!url) {
+                alert('뉴스 URL을 입력해주세요.');
+                return;
+            }
+            formData.append('url', url);
+        } else {
+            if (!text) {
+                alert('분석할 텍스트를 입력해주세요.');
+                return;
+            }
+            formData.append('text', text);
+        }
+
+        const scanner = document.getElementById('laser-scanner');
+        if (currentTab === 'text') {
+            scanner.classList.remove('hidden');
+        }
+
+        analyzeButton.disabled = true;
+        analyzeButton.classList.add('opacity-80');
+        analyzeButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+
+        try {
+            const res = await fetch("{{ url_for('news.detect_news_api') }}", {
+                method: 'POST',
+                body: formData,
+            });
+            const json = await res.json();
+            if (res.ok && json.status === 'success' && json.data.request_id) {
+                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
+            } else {
+                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+            }
+        } catch (err) {
+            alert('분석 요청 중 오류가 발생했습니다.');
+        } finally {
+            scanner.classList.add('hidden');
+            analyzeButton.disabled = false;
+            analyzeButton.classList.remove('opacity-80');
+            analyzeButton.innerHTML = '<span class="material-symbols-outlined group-hover:rotate-12 transition-transform">analytics</span> 소스 분석하기';
+        }
+    });
+</script>
+{% endblock %}

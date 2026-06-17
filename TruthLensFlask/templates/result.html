@@ -1,0 +1,401 @@
+{% set active_page = 'detect' %}
+{% extends "base.html" %}
+{% block title %}판별 결과 - TruthLens AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .gauge-container {
+        position: relative;
+        width: 280px;
+        height: 140px;
+        overflow: hidden;
+    }
+    .gauge-bg {
+        fill: none;
+        stroke: #edeeef;
+        stroke-width: 24;
+    }
+    .gauge-fill {
+        fill: none;
+        stroke: #F59E0B;
+        stroke-width: 24;
+        stroke-dasharray: 440;
+        stroke-dashoffset: 440;
+        transition: stroke-dashoffset 1.5s ease-out;
+        stroke-linecap: round;
+    }
+    .scanline {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #0EA5E9, transparent);
+        box-shadow: 0 0 15px #0EA5E9;
+        animation: scan 3s linear infinite;
+        z-index: 10;
+    }
+    @keyframes scan {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+    .glass-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set type_labels = {'video': '영상', 'image': '이미지', 'news': '뉴스', 'paper': '논문'} %}
+{% set detect_urls = {
+    'video': url_for('video.detect_video_page'),
+    'image': url_for('image.detect_image_page'),
+    'news': url_for('news.detect_news_page'),
+    'paper': url_for('paper.detect_paper_page'),
+} %}
+{% set retry_url = detect_urls.get(request.type, url_for('main.index')) %}
+
+{% if result %}
+    {% if result.score >= 70 %}
+        {% set verdict_color = 'alert-red' %}
+        {% set verdict_color_hex = '#EF4444' %}
+        {% set verdict_label = '매우 의심됨 - AI 패턴 탐지됨' %}
+        {% set verdict_icon = 'warning' %}
+        {% set verdict_chip = 'AI DETECTED' %}
+    {% elif result.score >= 40 %}
+        {% set verdict_color = 'suspicious-yellow' %}
+        {% set verdict_color_hex = '#F59E0B' %}
+        {% set verdict_label = '의심됨 - 추가 검토 권장' %}
+        {% set verdict_icon = 'warning' %}
+        {% set verdict_chip = 'SUSPICIOUS' %}
+    {% else %}
+        {% set verdict_color = 'authentic-green' %}
+        {% set verdict_color_hex = '#10B981' %}
+        {% set verdict_label = '낮은 위험 - 진본으로 추정됨' %}
+        {% set verdict_icon = 'verified' %}
+        {% set verdict_chip = 'AUTHENTIC' %}
+    {% endif %}
+
+    {% set d = result.detail_json or {} %}
+
+    <!-- Header & Result Summary -->
+    <div class="flex flex-col items-center mb-8 text-center">
+        <div class="flex items-center gap-2 px-3 py-1 bg-surface-container-highest rounded-full mb-3">
+            <span class="material-symbols-outlined text-electric-blue text-[18px]">verified</span>
+            <span class="font-label-mono text-label-mono text-on-surface-variant">{{ type_labels.get(request.type, request.type) }} 분석 #{{ request.id }}{% if result.cached %} · 캐시 재사용{% endif %}</span>
+        </div>
+        <h2 class="font-headline-lg-mobile text-headline-lg-mobile text-deep-navy mb-2">분석 완료</h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs">제출된 미디어에 대한 포렌식 스캔이 완료되었습니다. 아래에서 식별된 패턴을 확인하세요.</p>
+    </div>
+
+    <!-- Confidence Gauge & Identity -->
+    <div class="glass-card rounded-xl p-8 mb-6 flex flex-col items-center shadow-sm">
+        <div class="gauge-container mb-4">
+            <svg viewbox="0 0 300 150">
+                <path class="gauge-bg" d="M30,140 A120,120 0 0,1 270,140"></path>
+                <path class="gauge-fill" d="M30,140 A120,120 0 0,1 270,140" id="gaugePath" style="stroke: {{ verdict_color_hex }};"></path>
+            </svg>
+            <div class="absolute bottom-0 left-0 w-full flex flex-col items-center">
+                <span class="font-display-lg text-display-lg text-{{ verdict_color }} leading-none" id="percentageText">0%</span>
+                <span class="font-label-mono text-label-mono text-on-surface-variant uppercase tracking-tighter">AI 생성 가능성</span>
+            </div>
+        </div>
+        <div class="bg-{{ verdict_color }}/10 border border-{{ verdict_color }}/20 rounded-lg px-6 py-3 flex items-center gap-3 mb-4 text-center">
+            <span class="material-symbols-outlined text-{{ verdict_color }}" style="font-variation-settings: 'FILL' 1;">{{ verdict_icon }}</span>
+            <span class="font-title-md text-title-md text-{{ verdict_color }}">{{ verdict_label }}</span>
+        </div>
+        <div class="flex items-center gap-2 text-on-surface-variant">
+            <span class="material-symbols-outlined text-body-sm">schedule</span>
+            <span class="font-body-sm text-body-sm">분석 시각: {{ result.created_at }}</span>
+        </div>
+    </div>
+
+    <!-- Analysis Details -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Findings -->
+        <div class="glass-card rounded-xl p-6">
+            <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">analytics</span>
+                상세 분석 결과
+            </h3>
+           
+            {% if result.detail_json and result.detail_json.get('summary') %}
+            <div class="mb-6 p-4 bg-surface-container-low rounded-lg border-l-4 border-electric-blue">
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                    {{ result.detail_json.get('summary') }}
+                </p>
+            </div>
+            {% endif %}
+            <ul class="space-y-4">
+                <li class="flex gap-3">
+                    <span class="material-symbols-outlined text-{{ verdict_color }} text-body-md mt-0.5">info</span>
+                    <div class="flex flex-col">
+                        <span class="font-title-md text-body-md font-semibold">판별 신뢰 점수</span>
+                        <span class="font-body-sm text-body-sm text-on-surface-variant">AI 탐지 알고리즘 및 픽셀 시그니처 판별 점수: {{ result.score }}점</span>
+                    </div>
+                </li>
+                <li class="flex gap-3">
+                    <span class="material-symbols-outlined text-on-surface-variant text-body-md mt-0.5">query_stats</span>
+                    <div class="flex flex-col">
+                        <span class="font-title-md text-body-md font-semibold">검증 분류 유형</span>
+                        <span class="font-body-sm text-body-sm text-on-surface-variant">{{ type_labels.get(request.type, request.type) }} 데이터 검사 스위트 작동</span>
+                    </div>
+                </li>
+                <li class="flex gap-3">
+                    <span class="material-symbols-outlined text-on-surface-variant text-body-md mt-0.5">shield</span>
+                    <div class="flex flex-col">
+                        <span class="font-title-md text-body-md font-semibold">데이터 무결성</span>
+                        <span class="font-body-sm text-body-sm text-on-surface-variant">콘텐츠 스캔 전사본 및 해시 데이터베이스 매칭 검증 완료</span>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-6">
+                <span class="px-3 py-1 bg-{{ verdict_color }}/10 text-{{ verdict_color }} rounded-full font-label-mono text-label-mono uppercase inline-block">
+                    {{ verdict_chip }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Content Type Specific Rendering -->
+        {% if request.type == 'image' %}
+        <!-- Heatmap Visualization -->
+        <div class="glass-card rounded-xl p-6 flex flex-col overflow-hidden relative min-h-[280px]">
+            <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">visibility</span>
+                히트맵 시각화
+            </h3>
+            <div class="flex-grow relative rounded-lg overflow-hidden border border-outline-variant/30 bg-surface-container-high">
+                <div class="scanline"></div>
+                {% if d.get('heatmap') %}
+                <img alt="포렌식 히트맵" class="w-full h-full object-cover" src="{{ d.get('heatmap') }}"/>
+                {% else %}
+                <img alt="Forensic scan heatmap" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeqkQukCQXKRJaNR8d9iA--I5Y2l2bNgcYujZXyPR1V9O8gGm5N_zzRxorcPVIp6FDakjY-Z2fZJfpsHDN7TZY-EjxKF4C-RWS5Ff3G_nvPCJ6LY3NbiPpLDr7SnFzkxII8qDOfQsUHZSyhVP3qhrqK9hKt2ij5F4wJ0TeMkQgs_1wXNNSlEnYc-kTKrc6-JvpQLr-y7j5koafSMQliKXwsHitwzt6Kz2yjgdff6CrpYxkqBTXeqYRqxnnzgH6YPgf0fEkKdDXVA"/>
+                {% endif %}
+                <div class="absolute inset-0 bg-{{ verdict_color }}/20 mix-blend-overlay"></div>
+                <div class="absolute top-1/4 left-1/3 w-16 h-16 bg-{{ verdict_color }}/40 rounded-full blur-xl animate-pulse"></div>
+                <div class="absolute bottom-1/3 right-1/4 w-24 h-24 bg-suspicious-yellow/30 rounded-full blur-2xl animate-pulse delay-700"></div>
+            </div>
+            <div class="mt-4 flex justify-between items-center">
+                <span class="font-label-mono text-label-mono text-on-surface-variant">영역 포렌식 스캔 v4.2</span>
+                {% if d.get('exif') %}
+                <span class="font-label-mono text-label-mono text-electric-blue">EXIF {{ d.get('exif') | length }}건</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% elif request.type == 'video' %}
+        <!-- Deepfake / Frame Analysis -->
+        <div class="glass-card rounded-xl p-6 flex flex-col">
+            <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">movie_filter</span>
+                딥페이크 분석
+            </h3>
+            <div class="flex items-center gap-2 mb-4">
+                <span class="font-label-mono text-label-mono text-on-surface-variant uppercase">딥페이크 탐지</span>
+                {% if d.get('is_deepfake') %}
+                <span class="px-3 py-1 bg-alert-red/10 text-alert-red rounded-full font-label-mono text-label-mono uppercase">탐지됨</span>
+                {% else %}
+                <span class="px-3 py-1 bg-authentic-green/10 text-authentic-green rounded-full font-label-mono text-label-mono uppercase">미탐지</span>
+                {% endif %}
+            </div>
+            <span class="font-label-mono text-label-mono text-on-surface-variant uppercase mb-2 block">의심 구간</span>
+            {% if d.get('frame_highlights') %}
+            <ul class="space-y-2">
+                {% for frame in d.get('frame_highlights') %}
+                <li class="flex gap-2 text-body-sm text-on-surface-variant">
+                    <span class="material-symbols-outlined text-suspicious-yellow text-body-md mt-0.5">schedule</span>
+                    <span>{{ frame }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="font-body-sm text-body-sm text-on-surface-variant">의심 구간이 발견되지 않았습니다.</p>
+            {% endif %}
+        </div>
+
+        {% elif request.type == 'news' %}
+        <!-- News Text Analysis -->
+        <div class="glass-card rounded-xl p-6 flex flex-col">
+            <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">fact_check</span>
+                텍스트 분석 결과
+            </h3>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="p-3 bg-surface-container-low rounded-lg">
+                    <p class="font-label-mono text-label-mono text-on-surface-variant uppercase mb-1">가짜뉴스 가능성</p>
+                    <p class="font-title-md text-title-md text-deep-navy">{{ d.get('fake_news_score', 0) }}%</p>
+                </div>
+                <div class="p-3 bg-surface-container-low rounded-lg">
+                    <p class="font-label-mono text-label-mono text-on-surface-variant uppercase mb-1">출처 신뢰도</p>
+                    <p class="font-title-md text-title-md text-deep-navy">{{ d.get('source_trust') if d.get('source_trust') is not none else '정보 없음' }}</p>
+                </div>
+            </div>
+            <div class="space-y-4">
+                
+                <div>
+                    <p class="font-label-mono text-label-mono text-on-surface-variant uppercase">
+                        논리성
+                    </p>
+                    
+                    <p class="text-on-surface">
+                        {{ d.get('logic','분석 결과 없음') }}
+                    </p>
+                </div>
+
+                <div>
+                    <p class="font-label-mono text-label-mono text-on-surface-variant uppercase">
+                        과장 표현
+                    </p>
+
+                    <p class="text-on-surface">
+                        {{ d.get('exaggeration','없음') }}
+                    </p>
+                </div>
+
+            </div>            
+            <span class="font-label-mono text-label-mono text-on-surface-variant uppercase mb-2 block">의심 문장</span>
+            {% if d.get('suspicious_sentences') %}
+            <ul class="space-y-2">
+                {% for sentence in d.get('suspicious_sentences') %}
+                <li class="flex gap-2 text-body-sm text-on-surface-variant">
+                    <span class="material-symbols-outlined text-suspicious-yellow text-body-md mt-0.5">warning</span>
+                    <span>{{ sentence }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="font-body-sm text-body-sm text-on-surface-variant">의심되는 문장이 발견되지 않았습니다.</p>
+            {% endif %}
+        </div>
+
+        {% elif request.type == 'paper' %}
+        <!-- Paper Section Analysis -->
+        <div class="glass-card rounded-xl p-6 flex flex-col">
+            <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">summarize</span>
+                문서 분석 결과
+            </h3>
+            {% if d.get('section_scores') %}
+            <div class="space-y-3 mb-4">
+                {% for section, score in d.get('section_scores').items() %}
+                <div>
+                    <div class="flex justify-between font-label-mono text-label-mono mb-1">
+                        <span>{{ section }}</span>
+                        <span>{{ score }}%</span>
+                    </div>
+                    <div class="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+                        <div class="h-full bg-electric-blue" style="width: {{ score }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-4">섹션별 분석 데이터가 없습니다.</p>
+            {% endif %}
+            <span class="font-label-mono text-label-mono text-on-surface-variant uppercase mb-2 block">핵심 주장</span>
+            {% if d.get('key_claims') %}
+            <ul class="space-y-2">
+                {% for claim in d.get('key_claims') %}
+                <li class="flex gap-2 text-body-sm text-on-surface-variant">
+                    <span class="material-symbols-outlined text-electric-blue text-body-md mt-0.5">format_quote</span>
+                    <span>{{ claim }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="font-body-sm text-body-sm text-on-surface-variant">핵심 주장이 추출되지 않았습니다.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Raw Detail JSON -->
+    <details class="glass-card rounded-xl p-6 mb-6">
+        <summary class="font-title-md text-title-md text-deep-navy cursor-pointer flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">data_object</span>
+            원본 분석 데이터
+        </summary>
+        {% if result.detail_json %}
+        <pre class="mt-4 font-label-mono text-label-mono text-on-surface-variant bg-surface-container-low rounded-lg p-4 overflow-auto whitespace-pre-wrap">{{ result.detail_json | tojson(indent=2) }}</pre>
+        {% else %}
+        <p class="mt-4 font-body-sm text-body-sm text-on-surface-variant">세부 데이터가 없습니다.</p>
+        {% endif %}
+    </details>
+
+    <!-- Actions -->
+    <div class="flex flex-col gap-3 md:flex-row md:justify-center mt-8">
+        <a href="{{ url_for('result.download_pdf_report', request_id=request.id) }}" class="bg-deep-navy text-white font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 active:scale-95 transition-all no-underline">
+            <span class="material-symbols-outlined">download</span>
+            보고서 다운로드
+        </a>
+        <button onclick="navigator.clipboard.writeText(window.location.href); alert('결과 링크가 클립보드에 복사되었습니다.');" class="border border-electric-blue text-electric-blue font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-electric-blue/5 active:scale-95 transition-all">
+            <span class="material-symbols-outlined">share</span>
+            결과 공유
+        </button>
+        <a href="{{ retry_url }}" class="text-on-surface-variant font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container-high active:scale-95 transition-all no-underline border border-outline-variant/30">
+            <span class="material-symbols-outlined">refresh</span>
+            재분석하기
+        </a>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const gaugePath = document.getElementById('gaugePath');
+            const percent = {{ result.score | round(1) }};
+            const dashArray = 440;
+            const offset = dashArray - (dashArray * (Math.min(Math.max(percent, 0), 100) / 100));
+            setTimeout(() => {
+                gaugePath.style.strokeDashoffset = offset;
+            }, 300);
+
+            const textElement = document.getElementById('percentageText');
+            const duration = 1500;
+            const startTime = performance.now();
+            function updateCounter(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const currentNumber = Math.floor(progress * percent);
+                textElement.innerText = currentNumber + '%';
+                if (progress < 1) {
+                    requestAnimationFrame(updateCounter);
+                }
+            }
+            requestAnimationFrame(updateCounter);
+        });
+    </script>
+
+{% else %}
+    <!-- No result yet / Loading or Failed -->
+    <div class="flex flex-col items-center justify-center text-center py-20">
+        <div class="mb-6 p-6 bg-surface-container-low rounded-full">
+            <span class="material-symbols-outlined text-6xl text-on-surface-variant {{ 'animate-pulse' if request.status != 'failed' }}">
+                {{ 'hourglass_empty' if request.status != 'failed' else 'error_outline' }}
+            </span>
+        </div>
+        <h2 class="font-headline-lg-mobile text-headline-lg-mobile text-deep-navy mb-2">
+            {% if request.status == 'failed' %}
+                분석에 실패했습니다
+            {% else %}
+                분석이 진행 중입니다
+            {% endif %}
+        </h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs mb-8">
+            {% if request.status == 'failed' %}
+                요청 #{{ request.id }}의 분석 중 오류가 발생했습니다. 다시 시도해주세요.
+            {% else %}
+                요청 #{{ request.id }}({{ type_labels.get(request.type, request.type) }})의 상태: {{ request.status }}. 잠시 후 새로고침해주세요.
+            {% endif %}
+        </p>
+        <div class="flex flex-col gap-3 md:flex-row justify-center">
+            <a href="{{ retry_url }}" class="border border-electric-blue text-electric-blue font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-electric-blue/5 active:scale-95 transition-all no-underline">
+                <span class="material-symbols-outlined">refresh</span>
+                다시 시도하기
+            </a>
+            <a href="{{ url_for('main.index') }}" class="text-on-surface-variant font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container-high active:scale-95 transition-all no-underline">
+                <span class="material-symbols-outlined">home</span>
+                홈으로
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

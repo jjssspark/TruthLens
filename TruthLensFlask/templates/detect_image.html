@@ -1,0 +1,231 @@
+{% set active_page = 'detect' %}
+{% extends "base.html" %}
+{% block title %}이미지 분석 - TruthLens AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upload-dashed {
+        background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23C8C5CC' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+    }
+    .scan-line {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #0EA5E9, transparent);
+        box-shadow: 0 0 15px #0EA5E9;
+        animation: scanning 3s ease-in-out infinite;
+        display: none;
+    }
+    @keyframes scanning {
+        0% { top: 0%; }
+        50% { top: 100%; }
+        100% { top: 0%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">이미지 분석</h2>
+    <p class="text-on-surface-variant font-body-sm mt-1">AI 생성 이미지 탐지, 픽셀 패턴 분석, 메타데이터 정밀 조사를 위한 이미지를 업로드하세요.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
+    <!-- Analysis Workspace -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+        <!-- Upload Area -->
+        <div class="relative overflow-hidden upload-dashed rounded-xl p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white border-2 border-transparent transition-all duration-300 group hover:border-electric-blue/30" id="drop-zone">
+            <div class="scan-line absolute left-0 w-full z-10"></div>
+            <div class="mb-6 p-6 bg-surface-container-low rounded-full group-hover:scale-110 transition-transform duration-300">
+                <span class="material-symbols-outlined text-6xl text-on-surface-variant group-hover:text-electric-blue">cloud_upload</span>
+            </div>
+            <div class="space-y-2 mb-8">
+                <h3 class="font-title-md text-title-md text-on-surface">포렌식 자료를 드래그 앤 드롭 하세요</h3>
+                <p class="text-body-sm text-on-surface-variant">JPG, PNG, WebP 지원</p>
+                <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 10장까지 업로드 가능</p>
+            </div>
+            <label class="cursor-pointer">
+                <input accept="image/*" class="hidden" id="file-input" multiple type="file"/>
+                <div class="px-8 py-3 bg-deep-navy text-white font-semibold rounded-lg hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-2">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    이미지 업로드
+                </div>
+            </label>
+        </div>
+        <!-- Preview Area (Dynamic) -->
+        <div class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" id="preview-grid"></div>
+        <!-- Action Button -->
+        <div class="mt-4">
+            <button class="w-full py-4 bg-surface-container-highest text-on-surface-variant font-bold rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled id="detect-button" type="button">
+                <span class="material-symbols-outlined">document_scanner</span>
+                정직성 탐지 시작
+            </button>
+            <p class="text-center text-label-mono text-label-mono text-on-surface-variant mt-4 opacity-70">
+                기업급 포렌식 분석 • 256비트 암호화
+            </p>
+        </div>
+    </section>
+    <!-- Sidebar / Guidelines -->
+    <aside class="lg:col-span-4 space-y-6">
+        <!-- Guidelines Card -->
+        <div class="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-secondary">verified_user</span>
+                <h3 class="font-title-md text-title-md text-on-surface">분석 가이드라인</h3>
+            </div>
+            <ul class="space-y-4">
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">high_quality</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">고해상도</p>
+                        <p class="text-body-sm text-on-surface-variant">정확도를 높이기 위해 가급적 원본 소스 파일을 사용하세요.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">filter_center_focus</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">압축 방지</p>
+                        <p class="text-body-sm text-on-surface-variant">소셜 미디어의 압축은 AI 흔적을 가릴 수 있습니다. 원본 파일을 우선시하세요.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="material-symbols-outlined text-on-surface-variant shrink-0">layers</span>
+                    <div>
+                        <p class="font-semibold text-body-sm text-on-surface">다중 샘플</p>
+                        <p class="text-body-sm text-on-surface-variant">의심되는 시퀀스에서 여러 프레임을 업로드하면 교차 참조가 개선됩니다.</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-8 p-4 bg-surface-container-low rounded-lg border-l-4 border-electric-blue">
+                <p class="text-body-sm italic text-on-surface-variant">
+                    "정확도는 메타데이터의 무결성과 픽셀 밀도에 따라 달라집니다."
+                </p>
+            </div>
+        </div>
+        <!-- Secondary Info -->
+        <div class="bg-primary-container text-on-primary-container rounded-xl p-6 relative overflow-hidden group">
+            <div class="relative z-10">
+                <h4 class="font-label-mono text-label-mono uppercase tracking-widest mb-2 text-blue-200">PRO INVESTIGATOR</h4>
+                <p class="text-body-md font-semibold mb-4 text-white">딥 메타데이터 추출 기능을 잠금 해제하세요</p>
+                <a href="{{ url_for('mypage.profile') }}" class="text-body-sm font-bold text-electric-blue flex items-center gap-1 group-hover:gap-2 transition-all no-underline">
+                    엔터프라이즈로 업그레이드 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const previewGrid = document.getElementById('preview-grid');
+    const detectButton = document.getElementById('detect-button');
+    const scanLine = document.querySelector('.scan-line');
+    const resultUrlTemplate = "{{ url_for('result.result_page', request_id=0) }}";
+    let selectedFiles = [];
+
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-electric-blue', 'bg-surface-container');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+
+    function handleFiles(files) {
+        if (!files.length) return;
+        
+        // 기존 파일 목록에 추가 (최대 10개)
+        const incoming = Array.from(files);
+        selectedFiles = [...selectedFiles, ...incoming].slice(0, 10);
+        
+        renderPreviews();
+    }
+
+    function renderPreviews() {
+        previewGrid.innerHTML = '';
+        if (selectedFiles.length === 0) {
+            previewGrid.classList.add('hidden');
+            scanLine.style.display = 'none';
+            detectButton.disabled = true;
+            detectButton.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+            detectButton.classList.remove('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
+            return;
+        }
+
+        previewGrid.classList.remove('hidden');
+        scanLine.style.display = 'block';
+
+        detectButton.disabled = false;
+        detectButton.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+        detectButton.classList.add('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
+
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-lg overflow-hidden border border-outline-variant bg-surface-container-highest group';
+                div.innerHTML = `
+                    <img src="${e.target.result}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="업로드된 이미지">
+                    <button type="button" onclick="removeFile(${index})" class="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors z-20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                `;
+                previewGrid.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    window.removeFile = function(index) {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+    };
+
+    detectButton.addEventListener('click', async () => {
+        if (!selectedFiles.length) return;
+
+        detectButton.disabled = true;
+        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+        detectButton.classList.add('opacity-80');
+
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append('file', file));
+
+        try {
+            const res = await fetch("{{ url_for('image.detect_image_api') }}", {
+                method: 'POST',
+                body: formData,
+            });
+            const json = await res.json();
+            if (res.ok && json.status === 'success' && json.data.request_ids && json.data.request_ids.length) {
+                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_ids[0]);
+            } else {
+                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                detectButton.disabled = false;
+                detectButton.classList.remove('opacity-80');
+                detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+            }
+        } catch (err) {
+            alert('분석 요청 중 오류가 발생했습니다.');
+            detectButton.disabled = false;
+            detectButton.classList.remove('opacity-80');
+            detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% set active_page = 'history' %}
+{% extends "base.html" %}
+{% block title %}판별 이력 - TruthLens AI{% endblock %}
+
+{% block content %}
+{% set type_labels = {'video': '영상 분석', 'image': '이미지 분석', 'news': '뉴스 분석', 'paper': '문서 분석'} %}
+{% set type_icons = {'video': 'videocam', 'image': 'image', 'news': 'newspaper', 'paper': 'description'} %}
+{% set status_labels = {'pending': '대기 중', 'processing': '처리 중', 'done': '완료', 'failed': '실패'} %}
+{% set status_colors = {'pending': 'suspicious-yellow', 'processing': 'suspicious-yellow', 'done': 'authentic-green', 'failed': 'alert-red'} %}
+
+<div class="mb-8">
+    <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">판별 이력</h2>
+    <p class="text-on-surface-variant font-body-sm mt-1">지금까지 제출한 모든 분석 요청과 진행 상태를 확인하세요.</p>
+</div>
+
+{% if requests %}
+<div class="space-y-4">
+    {% for req in requests %}
+    <a href="{{ url_for('result.result_page', request_id=req.id) }}" class="flex items-center justify-between gap-4 p-4 bg-white rounded-xl border border-outline-variant hover:border-electric-blue hover:translate-x-1 transition-all no-underline text-on-surface">
+        <div class="flex items-center gap-4 overflow-hidden">
+            <div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-deep-navy shrink-0">
+                <span class="material-symbols-outlined">{{ type_icons.get(req.type, 'description') }}</span>
+            </div>
+            <div class="overflow-hidden">
+                <div class="font-title-md text-body-md text-deep-navy">{{ type_labels.get(req.type, req.type) }} 요청 #{{ req.id }}</div>
+                <div class="font-body-sm text-body-sm text-on-surface-variant truncate">{{ req.created_at }}</div>
+            </div>
+        </div>
+        <div class="px-3 py-1 bg-{{ status_colors.get(req.status, 'on-surface-variant') }}/10 text-{{ status_colors.get(req.status, 'on-surface-variant') }} rounded-full font-label-mono text-label-mono uppercase shrink-0">
+            {{ status_labels.get(req.status, req.status) }}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="flex flex-col items-center justify-center text-center py-20">
+    <div class="mb-6 p-6 bg-surface-container-low rounded-full">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant">history</span>
+    </div>
+    <h3 class="font-title-md text-title-md text-deep-navy mb-2">아직 분석 이력이 없습니다</h3>
+    <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs mb-8">탐지 스위트에서 영상, 이미지, 뉴스, 문서를 분석해 보세요.</p>
+    <a href="{{ url_for('main.index') }}#detection-suite" class="bg-deep-navy text-white font-title-md text-body-md px-8 py-3 rounded-xl flex items-center gap-2 hover:bg-primary/90 active:scale-95 transition-all no-underline">
+        <span class="material-symbols-outlined">document_scanner</span>
+        분석 시작하기
+    </a>
+</div>
+{% endif %}
+{% endblock %}
