@@ -42,6 +42,13 @@ def create_app(config_overrides=None):
             return redirect(url_for('main.login'))
 
     register_blueprints(app)
+
+    # 로컬 개발용 SQLite를 쓸 때는 schema.sql을 수동 실행할 필요 없이 테이블을 자동 생성한다
+    # (블루프린트 등록 이후에 실행해야 모든 모델이 SQLAlchemy 메타데이터에 등록된 상태가 된다)
+    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        with app.app_context():
+            db.create_all()
+
     return app
 
 

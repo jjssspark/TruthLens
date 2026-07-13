@@ -17,7 +17,8 @@ class Config:
     DB_PASSWORD = os.getenv('DB_PASSWORD', '')
     DB_PORT = int(os.getenv('DB_PORT', 3306))
 
-    SQLALCHEMY_DATABASE_URI = (
+    # DATABASE_URL이 설정되면 우선 사용 (로컬 개발용 SQLite 등). 없으면 MariaDB로 접속 (운영 기본값)
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or (
         f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False

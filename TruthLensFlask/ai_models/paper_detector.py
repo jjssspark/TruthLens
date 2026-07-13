@@ -15,16 +15,13 @@ class PaperDetector(BaseDetector):
     """논문 AI 생성 판별 및 자동 요약 모델"""
 
     def __init__(self):
-        # 환경변수에서 API KEY 로드
+        # 환경변수에서 API KEY 로드 (없어도 여기서는 실패시키지 않고, 실제 호출 시점에 처리한다.
+        # 그래야 API 키가 없어도 앱 자체는 정상 기동하고, 해당 기능 호출 시에만 에러를 반환한다)
         api_key = os.getenv("DEEPSEEK_API_KEY")
-        
-        print("API KEY 로드 확인:", "성공" if api_key else "실패")
-
-        if not api_key:
-            raise ValueError("DEEPSEEK_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.")
 
         # [수정] base_url 끝에 /v1을 명시해 주는 것이 더 안정적입니다.
-        self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+        self.client = OpenAI(api_key=api_key or "missing", base_url="https://api.deepseek.com/v1")
+        self._api_key_configured = bool(api_key)
 
     def extract_text_from_pdf(self, file_path):
         reader = PdfReader(file_path)
@@ -52,6 +49,9 @@ class PaperDetector(BaseDetector):
             raise ValueError("DeepSeek 응답을 JSON으로 변환하는 데 실패했습니다.")
 
     def analyze_with_gpt(self, text):
+        if not self._api_key_configured:
+            raise ValueError("DEEPSEEK_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.")
+
         # [수정] 입력 텍스트를 최소 15,000자 이상으로 늘려 논문 전체가 들어갈 수 있도록 합니다.
         # DeepSeek는 비용이 저렴하므로 더 늘려도 무방합니다.
         truncated_text = text[:20000]
