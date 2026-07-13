@@ -58,7 +58,32 @@ Flask 백엔드 구현은 [`TruthLensFlask/`](TruthLensFlask) 디렉토리를 �
 반응형 디자인으로 모바일(320px+), 태블릿(768px+), 데스크탑(1280px+)을 지원하며,
 모바일에서는 카메라/갤러리 접근을 통한 파일 업로드를 지원합니다.
 
-## 5. 배포
+## 5. 로컬 실행 (Quick Start)
+
+MariaDB/Redis를 따로 설치하지 않고 SQLite로 바로 실행할 수 있습니다.
+
+```bash
+cd TruthLensFlask
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+cp .env.example .env              # 기본값(SQLite)만으로 바로 실행 가능
+python app.py                     # http://localhost:3000
+```
+
+- 최초 실행 시 SQLite(`dev.db`)에 테이블이 자동 생성됩니다.
+- `/auth/email/signup`으로 이메일 회원가입 후 로그인하면 전체 기능을 체험할 수 있습니다 (Google 로그인은 `GOOGLE_CLIENT_ID`/`SECRET` 설정 시에만 동작).
+- 이미지 판별(FR-02)은 외부 API 키 없이 바로 동작합니다. 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
+- 영상 판별(FR-01)은 아직 AI 모델이 연동되지 않은 스텁 상태입니다.
+
+**테스트 실행**
+
+```bash
+python -m pytest -q
+```
+
+## 6. 배포
 
 배포 플랫폼으로 **클라우드타입(cloudtype.io)** 을 사용합니다. GitHub 연동 기반으로
 복잡한 인프라 설정 없이 Flask 애플리케이션을 빠르게 배포·운영할 수 있습니다.

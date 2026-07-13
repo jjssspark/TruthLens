@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+from werkzeug.security import generate_password_hash
+
 from backend.models.database import db
 from backend.models.mypage import User
 
@@ -116,7 +118,7 @@ def test_email_login_success_sets_session_and_redirects(app, client):
     
     with app.app_context():
         user = User(email='login@test.com', name='로그인유저',
-                    password_hash='mypassword')
+                    password_hash=generate_password_hash('mypassword'))
         db.session.add(user)
         db.session.commit()
         user_id = user.id
@@ -137,7 +139,7 @@ def test_email_login_wrong_password_redirects_to_login(app, client):
     
     with app.app_context():
         user = User(email='wrongpw@test.com', name='유저',
-                    password_hash='correct')
+                    password_hash=generate_password_hash('correct'))
         db.session.add(user)
         db.session.commit()
 

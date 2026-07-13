@@ -28,7 +28,7 @@ def test_analyze_caches_result_on_cache_miss(app, tmp_path):
     file_path = _write_image_file(tmp_path)
     detect_result = {"score": 42.0, "details": {"summary": "test"}}
 
-    with app.app_context():
+    with app.test_request_context():
         with patch('backend.services.image_service.get_cached_result', return_value=None), \
                 patch('backend.services.image_service.set_cached_result') as mock_set, \
                 patch.object(ImageDetector, 'detect', return_value=detect_result) as mock_detect:
@@ -40,7 +40,9 @@ def test_analyze_caches_result_on_cache_miss(app, tmp_path):
         result = DetectionResult.query.filter_by(request_id=detection_request.id).first()
         assert result.cached is False
         assert result.score == 42.0
-        assert result.detail_json == {"summary": "test"}
+        assert result.detail_json["summary"] == "test"
+        assert "analyzed_at" in result.detail_json
+        assert "elapsed_time" in result.detail_json
 
 
 def test_analyze_uses_cached_result_on_cache_hit(app, tmp_path):
@@ -55,7 +57,7 @@ def test_analyze_uses_cached_result_on_cache_hit(app, tmp_path):
     file_path = _write_image_file(tmp_path)
     cached_result = {"score": 99.0, "details": {"summary": "cached"}}
 
-    with app.app_context():
+    with app.test_request_context():
         with patch('backend.services.image_service.get_cached_result', return_value=json.dumps(cached_result)), \
                 patch('backend.services.image_service.set_cached_result') as mock_set, \
                 patch.object(ImageDetector, 'detect') as mock_detect:
@@ -67,4 +69,6 @@ def test_analyze_uses_cached_result_on_cache_hit(app, tmp_path):
         result = DetectionResult.query.filter_by(request_id=detection_request.id).first()
         assert result.cached is True
         assert result.score == 99.0
-        assert result.detail_json == {"summary": "cached"}
+        assert result.detail_json["summary"] == "cached"
+        assert "analyzed_at" in result.detail_json
+        assert "elapsed_time" in result.detail_json

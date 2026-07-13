@@ -24,7 +24,7 @@ def test_analyze_video_caches_result_on_cache_miss(app, tmp_path):
     (tmp_path / "test.mp4").write_bytes(b"fake-video-bytes")
     detect_result = {"score": 55.0, "details": {"summary": "video test"}}
 
-    with app.app_context():
+    with app.test_request_context():
         with patch('backend.services.video_service.get_cached_result', return_value=None), \
              patch('backend.services.video_service.set_cached_result') as mock_set, \
              patch.object(VideoDetector, 'detect', return_value=detect_result) as mock_detect:
@@ -44,7 +44,7 @@ def test_analyze_video_uses_cached_result_on_cache_hit(app, tmp_path):
     (tmp_path / "test.mp4").write_bytes(b"fake-video-bytes")
     cached_result = {"score": 77.0, "details": {"summary": "cached video"}}
 
-    with app.app_context():
+    with app.test_request_context():
         with patch('backend.services.video_service.get_cached_result',
                    return_value=json.dumps(cached_result)), \
              patch('backend.services.video_service.set_cached_result') as mock_set, \

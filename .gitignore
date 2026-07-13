@@ -5,7 +5,8 @@ coverage/
 .DS_Store
 *.log
 .env*
-.env.example
+!.env.example
+*.db
 
 .claude
 .understand-anything
