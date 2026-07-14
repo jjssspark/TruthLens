@@ -39,8 +39,12 @@ class CitationService:
                 doi=None,
                 title=None,
             ))
-            
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         return citations
 

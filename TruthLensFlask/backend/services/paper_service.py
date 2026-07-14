@@ -29,7 +29,11 @@ class PaperService:
         
         detection_request = DetectionRequest(user_id=user_id, content_hash=content_hash, type='paper', status='pending')
         db.session.add(detection_request)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         record_request(content_hash)
 
@@ -64,6 +68,10 @@ class PaperService:
             cached=is_cached,
         ))
         detection_request.status = 'done'
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         return detection_request
