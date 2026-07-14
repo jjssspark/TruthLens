@@ -1,5 +1,6 @@
 import os
 import io
+import logging
 import urllib.request
 from flask import current_app
 from reportlab.lib.pagesizes import letter
@@ -12,6 +13,9 @@ from reportlab.pdfbase.ttfonts import TTFont
 # 나눔고딕 폰트 다운로드용 URL 설정 (정형화된 구글 폰트 주소)
 FONT_URL = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
 FONT_BOLD_URL = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf"
+
+logger = logging.getLogger(__name__)
+
 
 class PDFService:
     """분석 결과 리포트를 PDF 형식으로 생성하는 서비스 클래스 (한글 대응 포함)"""
@@ -29,24 +33,24 @@ class PDFService:
         # 일반(Regular) 폰트 파일 보장
         if not os.path.exists(self.font_path):
             try:
-                print("구글 폰트 저장소에서 NanumGothic-Regular 다운로드 중...")
+                logger.info("구글 폰트 저장소에서 NanumGothic-Regular 다운로드 중...")
                 urllib.request.urlretrieve(FONT_URL, self.font_path)
             except Exception as e:
-                print(f"폰트 다운로드 중 오류 발생: {e}. Windows 시스템 폰트로 폴백 시도합니다.")
+                logger.warning("폰트 다운로드 중 오류 발생: %s. Windows 시스템 폰트로 폴백 시도합니다.", e)
                 # Windows 환경 맑은 고딕 폴백 경로 지정
                 win_font = r"C:\Windows\Fonts\malgun.ttf"
                 if os.path.exists(win_font):
                     self.font_path = win_font
                 else:
-                    print("Windows 시스템 폰트(malgun.ttf)를 찾을 수 없습니다. 기본 폰트를 사용합니다.")
+                    logger.warning("Windows 시스템 폰트(malgun.ttf)를 찾을 수 없습니다. 기본 폰트를 사용합니다.")
 
         # 볼드(Bold) 폰트 파일 보장
         if not os.path.exists(self.font_bold_path):
             try:
-                print("구글 폰트 저장소에서 NanumGothic-Bold 다운로드 중...")
+                logger.info("구글 폰트 저장소에서 NanumGothic-Bold 다운로드 중...")
                 urllib.request.urlretrieve(FONT_BOLD_URL, self.font_bold_path)
             except Exception as e:
-                print(f"볼드 폰트 다운로드 중 오류 발생: {e}. Windows 시스템 볼드 폰트로 폴백 시도합니다.")
+                logger.warning("볼드 폰트 다운로드 중 오류 발생: %s. Windows 시스템 볼드 폰트로 폴백 시도합니다.", e)
                 win_font_bold = r"C:\Windows\Fonts\malgunbd.ttf"
                 if os.path.exists(win_font_bold):
                     self.font_bold_path = win_font_bold
@@ -60,7 +64,7 @@ class PDFService:
             if os.path.exists(self.font_bold_path):
                 pdfmetrics.registerFont(TTFont('NanumGothic-Bold', self.font_bold_path))
         except Exception as e:
-            print(f"ReportLab 한글 폰트 등록에 실패하였습니다 (기본 Helvetica로 대체됩니다): {e}")
+            logger.error("ReportLab 한글 폰트 등록에 실패하였습니다 (기본 Helvetica로 대체됩니다): %s", e)
 
     def generate_report_pdf(self, request, result):
         """요청 및 결과 데이터를 조합하여 세련된 디자인의 PDF 보고서 바이너리를 생성합니다."""

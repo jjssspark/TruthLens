@@ -25,7 +25,10 @@ def detect_paper_api():
     save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename)
     file.save(save_path)
 
-    detection_request = PaperService().analyze(save_path)
+    try:
+        detection_request = PaperService().analyze(save_path)
+    except Exception as e:
+        return jsonify({"status": "error", "data": {"message": f"논문 분석 중 오류가 발생했습니다: {e}"}}), 500
 
     return jsonify({
         "status": "success",

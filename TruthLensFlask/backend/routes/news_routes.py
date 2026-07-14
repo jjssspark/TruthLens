@@ -25,9 +25,15 @@ def detect_news_api():
     if text and len(text) > MAX_TEXT_LENGTH:
         return jsonify({"status": "error", "data": {"message": f"text는 {MAX_TEXT_LENGTH}자를 초과할 수 없습니다."}}), 400
 
-    detection_request = NewsService().analyze(url=url, text=text)
+    try:
+        detection_request = NewsService().analyze(url=url, text=text)
+    except ValueError as e:
+        # 기사 추출 실패, 본문 없음 등 사용자 입력에서 비롯된 오류
+        return jsonify({"status": "error", "data": {"message": str(e)}}), 400
+    except Exception as e:
+        # DB 커밋 실패 등 예상치 못한 서버 오류
+        return jsonify({"status": "error", "data": {"message": f"뉴스 분석 중 오류가 발생했습니다: {e}"}}), 500
 
-    
     return jsonify({
         "status": "success",
         "data": {

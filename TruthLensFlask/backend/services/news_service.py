@@ -65,7 +65,11 @@ class NewsService:
             status="pending"
         )
         db.session.add(detection_request)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         # 6. Gemini 분석 (핵심 로직)
         result = self.detector.detect(article_text)
@@ -81,6 +85,10 @@ class NewsService:
         db.session.add(detection_result)
 
         detection_request.status = "done"
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         return detection_request

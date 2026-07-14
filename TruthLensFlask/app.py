@@ -1,3 +1,4 @@
+import logging
 import os
 
 from flask import Flask, redirect, request, session, url_for
@@ -13,6 +14,10 @@ _PUBLIC_PREFIXES = ('/login', '/auth/', '/static/')
 
 def create_app(config_overrides=None):
     load_dotenv()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    )
     app = Flask(__name__)
     app.config.from_object(Config)
     if config_overrides:

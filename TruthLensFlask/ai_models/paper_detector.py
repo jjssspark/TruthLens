@@ -3,13 +3,16 @@
 
 import os
 import json
+import logging
 import re
 from pypdf import PdfReader
 from openai import OpenAI
 
 # 상위 클래스가 정상적으로 구현되어 있다고 가정합니다.
 # from ai_models.base_detector import BaseDetector
-class BaseDetector: pass 
+class BaseDetector: pass
+
+logger = logging.getLogger(__name__)
 
 class PaperDetector(BaseDetector):
     """논문 AI 생성 판별 및 자동 요약 모델"""
@@ -47,6 +50,24 @@ class PaperDetector(BaseDetector):
             if match:
                 return json.loads(match.group())
             raise ValueError("DeepSeek 응답을 JSON으로 변환하는 데 실패했습니다.")
+
+    def _friendly_error_message(self, error):
+        """DeepSeek API 예외를 사용자에게 노출 가능한 한국어 메시지로 변환한다."""
+        message = str(error)
+
+        if "DEEPSEEK_API_KEY" in message:
+            return message
+
+        if "402" in message or "Insufficient Balance" in message:
+            return "DeepSeek API 잔액이 부족합니다. API 키 결제 상태를 확인하세요."
+
+        if "429" in message:
+            return "DeepSeek API 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요."
+
+        if "401" in message or "authentication" in message.lower():
+            return "DeepSeek API Key가 유효하지 않습니다. 키를 확인하세요."
+
+        return "논문 분석 중 오류가 발생했습니다. 잠시 후 다시 시도하세요."
 
     def analyze_with_gpt(self, text):
         if not self._api_key_configured:
@@ -110,32 +131,44 @@ DOI를 찾을 수 없으면 null
 """
         try:
             # [수정] model명을 "deepseek-chat"으로 변경합니다.
-            print("딥시크 메세지 전송")
+            logger.info("딥시크 메세지 전송")
             response = self.client.chat.completions.create(
-                model="deepseek-chat", 
+                model="deepseek-chat",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.2 # 구조화된 데이터를 받아야 하므로 일관성을 위해 낮은 온도로 설정
             )
-            
+
         except Exception as e:
-            print("DeepSeek API 통신 에러 발생:", e)
+            logger.error("DeepSeek API 통신 에러 발생: %s", e)
             raise
-        
+
         result_text = response.choices[0].message.content
-        print("===== DEEPSEEK RESPONSE =====")
-        print(result_text)
-        print("=============================")
+        logger.info("DeepSeek 응답 수신 (길이: %d자)", len(result_text or ""))
+        logger.debug("DeepSeek 응답 원문: %s", result_text)
 
         return self.parse_json_response(result_text)
 
     def detect(self, file_path):
-        text = self.extract_text_from_pdf(file_path)
-        
-        print("FILE PATH:", file_path)
-        print("TEXT LENGTH:", len(text))
+        try:
+            text = self.extract_text_from_pdf(file_path)
+        except Exception as e:
+            logger.error("PDF 텍스트 추출 실패 (%s): %s", file_path, e)
+            return {
+                "score": 0,
+                "details": {
+                    "error": f"PDF를 읽는 중 오류가 발생했습니다: {e}",
+                    "section_scores": {},
+                    "suspicious_paragraphs": [],
+                    "summary": "",
+                    "key_claims": [],
+                },
+            }
+
+        logger.info("FILE PATH: %s", file_path)
+        logger.info("TEXT LENGTH: %d", len(text))
 
         if not text:
             return {
@@ -165,10 +198,11 @@ DOI를 찾을 수 없으면 null
             }
 
         except Exception as e:
+            logger.error("논문 분석 실패: %s", e)
             return {
                 "score": 0,
                 "details": {
-                    "error": str(e),
+                    "error": self._friendly_error_message(e),
                     "section_scores": {},
                     "suspicious_paragraphs": [],
                     "summary": "",
