@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, session
-from datetime import datetime
-from backend.models.database import db
+from backend.models.database import db, utcnow
 
 mypage_bp = Blueprint('mypage', __name__)
 
@@ -17,5 +16,5 @@ class User(db.Model):
     scan_count = db.Column(db.Integer, nullable=False, default=0)           # 분석 통계 scans 수
     accuracy = db.Column(db.Float, nullable=False, default=0)               # 탐지 정확도 %
     next_payment_date = db.Column(db.Date, nullable=True)                   # 결제 예정일
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)

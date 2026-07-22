@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me}
+      # 비워두면(unset) SQLite, 값을 채우면 그 값을 그대로 사용.
+      # MariaDB 프로필 사용 시 DATABASE_URL=  (빈 값)으로 실행해 아래 DB_* 값을 쓰게 한다.
+      DATABASE_URL: ${DATABASE_URL-sqlite:///instance/dev.db}
+      DB_HOST: ${DB_HOST:-mariadb}
+      DB_NAME: ${DB_NAME:-truthlens}
+      DB_USER: ${DB_USER:-truthlens}
+      DB_PASSWORD: ${DB_PASSWORD:-truthlens}
+      DB_PORT: ${DB_PORT:-3306}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FLASK_ENV: production
+    volumes:
+      - uploads:/app/uploads
+      - instance:/app/instance
+
+  # 기본(docker compose up)으로는 실행되지 않음.
+  # MariaDB+Redis로 실행하려면:
+  #   DATABASE_URL= docker compose --profile full up
+  mariadb:
+    image: mariadb:11
+    profiles: ["full"]
+    environment:
+      MARIADB_DATABASE: truthlens
+      MARIADB_USER: truthlens
+      MARIADB_PASSWORD: truthlens
+      MARIADB_ROOT_PASSWORD: root
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["full"]
+
+volumes:
+  uploads:
+  instance:
+  mariadb_data:

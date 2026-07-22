@@ -17,7 +17,11 @@
 {% block content %}
 <div class="mb-4">
     <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">영상 분석</h2>
-    <p class="text-on-surface-variant font-body-sm mt-1">딥페이크 탐지, 시간적 결함 분석, 안면 일관성 검사를 위한 영상을 업로드하거나 URL을 입력하세요.</p>
+    <p class="text-on-surface-variant font-body-sm mt-1">딥페이크 탐지, 시간적 결함 분석을 위한 영상을 업로드하거나 직접 링크된 영상 URL을 입력하세요.</p>
+    <div class="mt-4 flex items-center gap-2 px-4 py-3 bg-secondary-container/10 border border-secondary-container/20 rounded-lg">
+        <span class="material-symbols-outlined text-secondary text-[20px]">info</span>
+        <p class="text-body-sm text-on-surface">프레임 샘플링 기반 로컬 휴리스틱 분석입니다(외부 API 미사용). YouTube/Vimeo 페이지 링크는 아직 지원되지 않으며, 직접 링크된 영상 파일(.mp4 등) 또는 파일 업로드를 이용해 주세요.</p>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
@@ -62,7 +66,7 @@
                     <input id="video-url" class="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg px-4 py-4 focus:ring-2 focus:ring-electric-blue focus:border-deep-navy transition-all outline-none font-body-md" placeholder="https://www.youtube.com/watch?v=..." type="url"/>
                     <div class="flex items-center gap-2 p-3 bg-secondary-container/10 rounded-lg border border-secondary-container/20">
                         <span class="material-symbols-outlined text-secondary text-[20px]">info</span>
-                        <p class="text-body-sm text-secondary">YouTube, Vimeo 및 직접 링크된 영상 파일을 지원합니다.</p>
+                        <p class="text-body-sm text-secondary">직접 링크된 영상 파일(.mp4 등)을 지원합니다. YouTube/Vimeo 페이지 링크는 아직 지원되지 않습니다.</p>
                     </div>
                 </div>
                 <!-- Action Button -->
@@ -205,7 +209,14 @@
         }
     }
 
-    detectButton.addEventListener('click', async () => {
+    function resetDetectButton() {
+        detectButton.disabled = false;
+        detectButton.classList.remove('opacity-80');
+        detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+        TruthLens.removeProgressBar(detectButton.parentElement);
+    }
+
+    detectButton.addEventListener('click', () => {
         const formData = new FormData();
         if (currentTab === 'file') {
             if (!selectedFile) return;
@@ -218,28 +229,27 @@
 
         detectButton.disabled = true;
         detectButton.classList.add('opacity-80');
-        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 업로드 중... 0%';
 
-        try {
-            const res = await fetch("{{ url_for('video.detect_video_api') }}", {
-                method: 'POST',
-                body: formData,
-            });
-            const json = await res.json();
-            if (res.ok && json.status === 'success' && json.data.request_id) {
-                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
-            } else {
-                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
-                detectButton.disabled = false;
-                detectButton.classList.remove('opacity-80');
-                detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
-            }
-        } catch (err) {
-            alert('분석 요청 중 오류가 발생했습니다.');
-            detectButton.disabled = false;
-            detectButton.classList.remove('opacity-80');
-            detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
-        }
+        TruthLens.uploadWithProgress("{{ url_for('video.detect_video_api') }}", formData, {
+            onProgress: (percent) => {
+                TruthLens.renderProgressBar(detectButton.parentElement, percent);
+                const label = percent < 100 ? `업로드 중... ${percent}%` : '분석 중...';
+                detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
+            },
+            onSuccess: (json) => {
+                if (json.status === 'success' && json.data.request_id) {
+                    window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
+                } else {
+                    alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                    resetDetectButton();
+                }
+            },
+            onError: (data) => {
+                alert((data && data.message) || '분석 요청 중 오류가 발생했습니다.');
+                resetDetectButton();
+            },
+        });
     });
 </script>
 {% endblock %}

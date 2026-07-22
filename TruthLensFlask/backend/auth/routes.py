@@ -1,10 +1,8 @@
-from datetime import datetime
-
 from flask import Blueprint, flash, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.auth import oauth
-from backend.models.database import db
+from backend.models.database import db, utcnow
 from backend.models.mypage import User
 
 auth_bp = Blueprint('auth', __name__)
@@ -31,7 +29,7 @@ def google_callback():
             )
             db.session.add(user)
 
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = utcnow()
         db.session.commit()
 
         session['user_id'] = user.id
@@ -52,7 +50,7 @@ def email_login():
             flash('이메일 또는 비밀번호가 올바르지 않습니다.')
             return redirect(url_for('main.login'))
 
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = utcnow()
         db.session.commit()
 
         session['user_id'] = user.id

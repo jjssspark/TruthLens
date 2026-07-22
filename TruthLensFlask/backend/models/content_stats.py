@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from backend.models.database import db
+from backend.models.database import db, utcnow
 
 
 class ContentStats(db.Model):
@@ -9,4 +7,4 @@ class ContentStats(db.Model):
 
     content_hash = db.Column(db.String(64), primary_key=True)
     request_count = db.Column(db.Integer, default=0)
-    last_requested_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_requested_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)

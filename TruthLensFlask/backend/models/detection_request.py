@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from backend.models.database import db
+from backend.models.database import db, utcnow
 
 
 class DetectionRequest(db.Model):
@@ -12,4 +10,4 @@ class DetectionRequest(db.Model):
     content_hash = db.Column(db.String(64), nullable=False, index=True)
     type = db.Column(db.String(20), nullable=False)  # video, image, news, paper
     status = db.Column(db.String(20), nullable=False, default='pending')  # pending, processing, done, failed
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)

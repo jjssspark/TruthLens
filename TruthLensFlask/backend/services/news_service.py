@@ -1,9 +1,9 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from flask import session
 
 from ai_models.news_detector import NewsDetector
-from backend.models.database import db
+from backend.models.database import db, utcnow
 from backend.models.detection_request import DetectionRequest
 from backend.models.detection_result import DetectionResult
 from backend.services.content_hash_service import hash_text_or_url
@@ -42,7 +42,7 @@ class NewsService:
             .filter(
                 DetectionRequest.content_hash == content_hash,
                 DetectionRequest.status == "done",
-                DetectionRequest.created_at >= datetime.utcnow() - timedelta(days=self.CACHE_TTL_DAYS)
+                DetectionRequest.created_at >= utcnow() - timedelta(days=self.CACHE_TTL_DAYS)
             )
             .order_by(DetectionRequest.created_at.desc())
             .first()

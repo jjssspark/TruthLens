@@ -150,36 +150,42 @@
         detectButton.classList.add('bg-deep-navy', 'text-white', 'hover:bg-primary/90', 'active:scale-95');
     }
 
-    detectButton.addEventListener('click', async () => {
+    function resetDetectButton() {
+        detectButton.disabled = false;
+        detectButton.classList.remove('opacity-80');
+        detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
+        TruthLens.removeProgressBar(detectButton.parentElement);
+    }
+
+    detectButton.addEventListener('click', () => {
         if (!selectedFile) return;
 
         detectButton.disabled = true;
         detectButton.classList.add('opacity-80');
-        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 업로드 중... 0%';
 
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        try {
-            const res = await fetch("{{ url_for('paper.detect_paper_api') }}", {
-                method: 'POST',
-                body: formData,
-            });
-            const json = await res.json();
-            if (res.ok && json.status === 'success' && json.data.request_id) {
-                window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
-            } else {
-                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
-                detectButton.disabled = false;
-                detectButton.classList.remove('opacity-80');
-                detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
-            }
-        } catch (err) {
-            alert('분석 요청 중 오류가 발생했습니다.');
-            detectButton.disabled = false;
-            detectButton.classList.remove('opacity-80');
-            detectButton.innerHTML = '<span class="material-symbols-outlined">document_scanner</span> 정직성 탐지 시작';
-        }
+        TruthLens.uploadWithProgress("{{ url_for('paper.detect_paper_api') }}", formData, {
+            onProgress: (percent) => {
+                TruthLens.renderProgressBar(detectButton.parentElement, percent);
+                const label = percent < 100 ? `업로드 중... ${percent}%` : '분석 중...';
+                detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
+            },
+            onSuccess: (json) => {
+                if (json.status === 'success' && json.data.request_id) {
+                    window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
+                } else {
+                    alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                    resetDetectButton();
+                }
+            },
+            onError: (data) => {
+                alert((data && data.message) || '분석 요청 중 오류가 발생했습니다.');
+                resetDetectButton();
+            },
+        });
     });
 </script>
 {% endblock %}

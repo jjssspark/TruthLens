@@ -18,6 +18,7 @@ venv/
 .venv/
 *.egg-info/
 .pytest_cache/
+.coverage
 
 # 업로드 파일은 분석 후 삭제 대상이므로 추적하지 않음 (4.2 보안)
 uploads/*

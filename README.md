@@ -60,7 +60,7 @@ Flask 백엔드 구현은 [`TruthLensFlask/`](TruthLensFlask) 디렉토리를 �
 
 ## 5. 로컬 실행 (Quick Start)
 
-MariaDB/Redis를 따로 설치하지 않고 SQLite로 바로 실행할 수 있습니다.
+MariaDB/Redis를 따로 설치하지 않고 SQLite로 바로 실행할 수 있습니다. **3분 안에 실행 가능**합니다.
 
 ```bash
 cd TruthLensFlask
@@ -75,12 +75,30 @@ python app.py                     # http://localhost:3000
 - 최초 실행 시 SQLite(`dev.db`)에 테이블이 자동 생성됩니다.
 - `/auth/email/signup`으로 이메일 회원가입 후 로그인하면 전체 기능을 체험할 수 있습니다 (Google 로그인은 `GOOGLE_CLIENT_ID`/`SECRET` 설정 시에만 동작).
 - 이미지 판별(FR-02)은 외부 API 키 없이 바로 동작합니다. 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
-- 영상 판별(FR-01)은 아직 AI 모델이 연동되지 않은 스텁 상태입니다.
+- **영상 판별(FR-01)은 아직 AI 모델이 연동되지 않은 스텁입니다** (`ai_models/video_detector.py`가 항상 score 0.0을 반환). 화면에는 "모델 연동 예정" 배지로 명확히 안내됩니다 — 5일 스코프에서 의도적으로 로드맵으로 남긴 부분입니다.
+
+**시연 시나리오와 진행상황 확인 방법**은 [`TruthLensFlask/DEMO.md`](TruthLensFlask/DEMO.md)를, 개발 중 발견한 버그와 해결 과정은 [`TruthLensFlask/TROUBLESHOOTING.md`](TruthLensFlask/TROUBLESHOOTING.md)를 참고하세요.
+
+### Docker로 실행
+
+MariaDB/Redis 설치 없이 SQLite 기반으로 바로 기동합니다.
+
+```bash
+cd TruthLensFlask
+docker compose up            # http://localhost:3000
+```
+
+MariaDB + Redis 조합으로 운영 환경과 유사하게 실행하려면:
+
+```bash
+DATABASE_URL= docker compose --profile full up
+```
 
 **테스트 실행**
 
 ```bash
-python -m pytest -q
+python -m pytest -q                                    # 전체 테스트
+python -m pytest --cov=backend --cov-report=term-missing  # 커버리지 확인
 ```
 
 ## 6. 배포
