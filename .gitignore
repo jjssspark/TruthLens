@@ -23,3 +23,8 @@ venv/
 # 업로드 파일은 분석 후 삭제 대상이므로 추적하지 않음 (4.2 보안)
 uploads/*
 !uploads/.gitkeep
+# Claude Code (로컬 전용 — 커밋하지 않음)
+CLAUDE.md
+.claude/
+uploads/
+TruthLensFlask/uploads/
