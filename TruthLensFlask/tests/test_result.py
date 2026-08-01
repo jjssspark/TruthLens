@@ -63,6 +63,13 @@ def test_stats_api_returns_existing_count(app, logged_in_client):
     assert response.get_json()['data']['request_count'] == 5
 
 
+def test_stats_api_uses_envelope(logged_in_client):
+    """통계 API가 봉투 형식으로 응답한다 (FR-05)"""
+    body = logged_in_client.get('/api/v1/stats/nonexistent-hash').get_json()
+
+    assert body == {"success": True, "data": {"request_count": 0}, "error": None}
+
+
 def test_download_pdf_report_returns_pdf(app, logged_in_client):
     """PDF 다운로드는 폰트 다운로드(네트워크) 없이 PDFService만 모킹해 검증한다"""
     request_id = _create_request_with_result(app)
