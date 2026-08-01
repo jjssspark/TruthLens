@@ -342,27 +342,7 @@
         // Google 인증 완료 후 콜백 함수 (프론트엔드 SDK 방식)
         function handleCredentialResponse(response) {
             console.log("Google Credential Token:", response.credential);
-            
-            // 여기에 백엔드로 구글 토큰을 전달하는 코드를 추가합니다.
-            // 예시:
-            /*
-            fetch('/login/google/callback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ credential: response.credential }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = "{{ url_for('main.index') }}";
-                } else {
-                    alert('구글 로그인에 실패했습니다: ' + data.message);
-                }
-            });
-            */
-            
+
             alert('구글 소셜 로그인 성공! (개발자 콘솔 연동 시 DB에 사용자 정보가 자동 저장됩니다)');
             window.location.href = "{{ url_for('main.index') }}";
         }
