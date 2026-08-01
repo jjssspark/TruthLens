@@ -27,7 +27,34 @@ def test_detect_news_api_accepts_text(logged_in_client):
     """정상 텍스트 입력 시 분석 요청이 생성되어야 한다 (FR-03)"""
     response = logged_in_client.post('/api/v1/detect/news', data={"text": "샘플 뉴스 본문"})
     assert response.status_code == 200
-    assert response.get_json()["status"] == "success"
+    assert response.get_json()["success"] is True
+
+
+def test_news_requires_url_or_text(logged_in_client):
+    """url·text 둘 다 없으면 INPUT_REQUIRED로 400을 반환한다"""
+    body = logged_in_client.post('/api/v1/detect/news', data={}).get_json()
+
+    assert body["success"] is False
+    assert body["error"]["code"] == "INPUT_REQUIRED"
+
+
+def test_news_rejects_text_over_limit(logged_in_client):
+    """10,000자를 넘는 text는 TEXT_TOO_LONG으로 거부한다"""
+    body = logged_in_client.post(
+        '/api/v1/detect/news', data={'text': 'ㄱ' * 10001}
+    ).get_json()
+
+    assert body["error"]["code"] == "TEXT_TOO_LONG"
+
+
+def test_news_upstream_failure_does_not_leak_exception(logged_in_client):
+    """외부 분석 실패 시 예외 메시지를 응답에 노출하지 않는다"""
+    with patch.object(NewsService, 'analyze', side_effect=RuntimeError("api-key=SECRET123")):
+        response = logged_in_client.post('/api/v1/detect/news', data={'text': '본문'})
+
+    assert response.status_code == 502
+    assert response.get_json()["error"]["code"] == "ANALYSIS_FAILED"
+    assert "SECRET123" not in response.get_data(as_text=True)
 
 
 def test_analyze_news_caches_result_on_cache_miss(app):
