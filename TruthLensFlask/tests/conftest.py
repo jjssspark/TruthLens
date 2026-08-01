@@ -13,6 +13,8 @@ def app(tmp_path_factory):
         "GOOGLE_CLIENT_SECRET": "test-client-secret",
         # 테스트가 실제 uploads/를 오염시키지 않도록 격리
         "UPLOAD_FOLDER": str(tmp_path_factory.mktemp("uploads")),
+        # TESTING=True면 예외가 재발생해 errorhandler가 동작하지 않는다
+        "PROPAGATE_EXCEPTIONS": False,
     })
 
     with flask_app.app_context():

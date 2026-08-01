@@ -1,11 +1,14 @@
 import logging
 import os
+import uuid
 
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, g, redirect, request, session, url_for
 from dotenv import load_dotenv
+from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
+from backend.api.response import fail
 from backend.models.database import db
 from backend.auth import oauth
 
@@ -40,6 +43,10 @@ def create_app(config_overrides=None):
     )
 
     @app.before_request
+    def assign_trace_id():
+        g.trace_id = request.headers.get('X-Request-Id') or uuid.uuid4().hex
+
+    @app.before_request
     def require_login():
         if any(request.path.startswith(p) for p in _PUBLIC_PREFIXES):
             return
@@ -47,6 +54,18 @@ def create_app(config_overrides=None):
             return redirect(url_for('main.login'))
 
     register_blueprints(app)
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(e):
+        # 404·405 등은 Flask 기본 처리를 그대로 쓴다
+        if isinstance(e, HTTPException):
+            return e
+
+        app.logger.exception("처리되지 않은 예외", extra={"event": "request.failed"})
+
+        if request.path.startswith('/api/'):
+            return fail("INTERNAL_ERROR", "서버 오류가 발생했습니다.", 500)
+        return "서버 오류가 발생했습니다.", 500
 
     # 로컬 개발용 SQLite를 쓸 때는 schema.sql을 수동 실행할 필요 없이 테이블을 자동 생성한다
     # (블루프린트 등록 이후에 실행해야 모든 모델이 SQLAlchemy 메타데이터에 등록된 상태가 된다)
