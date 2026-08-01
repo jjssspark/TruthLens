@@ -5,12 +5,14 @@ from backend.models.database import db
 
 
 @pytest.fixture
-def app():
+def app(tmp_path_factory):
     flask_app = create_app(config_overrides={
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         "GOOGLE_CLIENT_ID": "test-client-id",
         "GOOGLE_CLIENT_SECRET": "test-client-secret",
+        # 테스트가 실제 uploads/를 오염시키지 않도록 격리
+        "UPLOAD_FOLDER": str(tmp_path_factory.mktemp("uploads")),
     })
 
     with flask_app.app_context():

@@ -1,12 +1,13 @@
-import os
-
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from backend.models.paper_citation import PaperCitation
 from backend.services.citation_service import CitationService
 from backend.services.paper_service import PaperService
+from backend.services.upload_service import UnsupportedFileType, save_upload
 
 paper_bp = Blueprint('paper', __name__)
+
+ALLOWED_PAPER_EXT = {'pdf'}
 
 
 @paper_bp.route('/detect/paper', methods=['GET'])
@@ -22,8 +23,10 @@ def detect_paper_api():
     if not file:
         return jsonify({"status": "error", "data": {"message": "file(PDF)이 필요합니다."}}), 400
 
-    save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(save_path)
+    try:
+        save_path = save_upload(file, ALLOWED_PAPER_EXT, current_app.config['UPLOAD_FOLDER'])
+    except UnsupportedFileType as e:
+        return jsonify({"status": "error", "data": {"message": str(e)}}), 400
 
     try:
         detection_request = PaperService().analyze(save_path)
