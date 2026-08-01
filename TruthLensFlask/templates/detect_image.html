@@ -220,10 +220,10 @@
                 detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
             },
             onSuccess: (json) => {
-                if (json.status === 'success' && json.data.request_ids && json.data.request_ids.length) {
+                if (json.success && json.data.request_ids && json.data.request_ids.length) {
                     window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_ids[0]);
                 } else {
-                    alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                    alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
                     resetDetectButton();
                 }
             },

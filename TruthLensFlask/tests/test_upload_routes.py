@@ -46,3 +46,34 @@ def test_traversal_filename_does_not_write_outside_upload_folder(app, logged_in_
     assert not os.path.exists(escaped)
     assert os.listdir(upload_folder) != []
     assert all('..' not in name for name in os.listdir(upload_folder))
+
+
+def test_image_error_response_uses_envelope(logged_in_client):
+    """이미지 엔드포인트 에러는 봉투 형식과 에러 코드를 따른다"""
+    response = logged_in_client.post('/api/v1/detect/image', data={})
+    body = response.get_json()
+
+    assert response.status_code == 400
+    assert body["success"] is False
+    assert body["data"] is None
+    assert body["error"]["code"] == "FILE_REQUIRED"
+
+
+def test_image_unsupported_extension_uses_error_code(logged_in_client):
+    """확장자 위반은 FILE_TYPE_UNSUPPORTED 코드를 쓴다"""
+    body = _upload(logged_in_client, '/api/v1/detect/image', 'payload.php').get_json()
+
+    assert body["error"]["code"] == "FILE_TYPE_UNSUPPORTED"
+
+
+def test_image_success_response_uses_envelope(logged_in_client):
+    """이미지 판별 성공 응답은 success/data/error 봉투를 쓴다"""
+    from backend.services.image_service import ImageService
+
+    class _Stub:
+        id = 42
+
+    with patch.object(ImageService, 'analyze_multiple', return_value=[_Stub()]):
+        body = _upload(logged_in_client, '/api/v1/detect/image', 'photo.jpg').get_json()
+
+    assert body == {"success": True, "data": {"request_ids": [42]}, "error": None}
