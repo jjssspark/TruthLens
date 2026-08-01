@@ -1,4 +1,3 @@
-import logging
 import os
 import uuid
 
@@ -9,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from backend.api.response import fail
+from backend.logging_config import configure_logging
 from backend.models.database import db
 from backend.auth import oauth
 
@@ -17,14 +17,12 @@ _PUBLIC_PREFIXES = ('/login', '/auth/', '/static/')
 
 def create_app(config_overrides=None):
     load_dotenv()
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    )
     app = Flask(__name__)
     app.config.from_object(Config)
     if config_overrides:
         app.config.update(config_overrides)
+
+    configure_logging(app)
 
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
