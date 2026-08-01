@@ -53,4 +53,4 @@ docker compose up          # 또는: source venv/bin/activate && python app.py
 ## 백업 자료
 
 네트워크가 막혀 있거나(API 키 쿼터 소진 등) 라이브 시연이 어려운 경우를 대비해
-`docs/demo/` 폴더의 GIF를 백업 시연 자료로 사용하세요(이미지 판별 플로우 1건 기록).
+`docs/assets/` 폴더의 GIF를 백업 시연 자료로 사용하세요(이미지 판별 플로우 1건 기록).
