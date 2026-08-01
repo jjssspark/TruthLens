@@ -1,5 +1,6 @@
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, render_template, request
 
+from backend.api.response import fail, ok
 from backend.services.upload_service import UnsupportedFileType, save_upload
 from backend.services.video_service import VideoService
 
@@ -24,17 +25,13 @@ def detect_video_api():
     else:
         file = request.files.get('file')
         if not file:
-            return jsonify({"status": "error", "data": {"message": "file 또는 url이 필요합니다."}}), 400
+            return fail("INPUT_REQUIRED", "file 또는 url이 필요합니다.", 400)
 
         try:
             save_path = save_upload(file, ALLOWED_VIDEO_EXT, current_app.config['UPLOAD_FOLDER'])
         except UnsupportedFileType as e:
-            return jsonify({"status": "error", "data": {"message": str(e)}}), 400
+            return fail("FILE_TYPE_UNSUPPORTED", str(e), 400)
 
         detection_request = VideoService().analyze(file_path=save_path)
 
-    return jsonify({
-        "status": "success",
-        "data": {"request_id": detection_request.id},
-        "meta": {},
-    })
+    return ok({"request_id": detection_request.id})

@@ -77,3 +77,22 @@ def test_image_success_response_uses_envelope(logged_in_client):
         body = _upload(logged_in_client, '/api/v1/detect/image', 'photo.jpg').get_json()
 
     assert body == {"success": True, "data": {"request_ids": [42]}, "error": None}
+
+
+def test_paper_analysis_failure_returns_analysis_failed(logged_in_client):
+    """논문 분석 실패는 502 ANALYSIS_FAILED이며 예외를 노출하지 않는다"""
+    from backend.services.paper_service import PaperService
+
+    with patch.object(PaperService, 'analyze', side_effect=RuntimeError("deepseek-key=SECRET456")):
+        response = _upload(logged_in_client, '/api/v1/detect/paper', 'thesis.pdf')
+
+    assert response.status_code == 502
+    assert response.get_json()["error"]["code"] == "ANALYSIS_FAILED"
+    assert "SECRET456" not in response.get_data(as_text=True)
+
+
+def test_video_requires_file_or_url(logged_in_client):
+    """영상은 file·url 둘 다 없으면 INPUT_REQUIRED를 반환한다"""
+    body = logged_in_client.post('/api/v1/detect/video', data={}).get_json()
+
+    assert body["error"]["code"] == "INPUT_REQUIRED"

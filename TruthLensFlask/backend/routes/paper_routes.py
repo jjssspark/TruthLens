@@ -1,5 +1,6 @@
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, render_template, request
 
+from backend.api.response import fail, ok
 from backend.models.paper_citation import PaperCitation
 from backend.services.citation_service import CitationService
 from backend.services.paper_service import PaperService
@@ -21,23 +22,20 @@ def detect_paper_api():
     """논문 AI 판별 요청: PDF 업로드 (최대 50MB, 200페이지, FR-04)"""
     file = request.files.get('file')
     if not file:
-        return jsonify({"status": "error", "data": {"message": "file(PDF)이 필요합니다."}}), 400
+        return fail("FILE_REQUIRED", "file(PDF)이 필요합니다.", 400)
 
     try:
         save_path = save_upload(file, ALLOWED_PAPER_EXT, current_app.config['UPLOAD_FOLDER'])
     except UnsupportedFileType as e:
-        return jsonify({"status": "error", "data": {"message": str(e)}}), 400
+        return fail("FILE_TYPE_UNSUPPORTED", str(e), 400)
 
     try:
         detection_request = PaperService().analyze(save_path)
-    except Exception as e:
-        return jsonify({"status": "error", "data": {"message": f"논문 분석 중 오류가 발생했습니다: {e}"}}), 500
+    except Exception:
+        current_app.logger.exception("논문 분석 실패", extra={"event": "paper.analyze.failed"})
+        return fail("ANALYSIS_FAILED", "논문 분석에 실패했습니다. 잠시 후 다시 시도해주세요.", 502)
 
-    return jsonify({
-        "status": "success",
-        "data": {"request_id": detection_request.id},
-        "meta": {},
-    })
+    return ok({"request_id": detection_request.id})
 
 
 @paper_bp.route('/api/v1/paper/<int:request_id>/citations', methods=['GET'])
@@ -45,15 +43,11 @@ def get_citations(request_id):
     """논문 인용 분석 결과 조회 (FR-04)"""
     citations = PaperCitation.query.filter_by(request_id=request_id).all()
 
-    return jsonify({
-        "status": "success",
-        "data": {
-            "citations": [
-                {"ref": c.citation_ref, "status": c.status, "doi": c.doi, "title": c.title}
-                for c in citations
-            ]
-        },
-        "meta": {},
+    return ok({
+        "citations": [
+            {"ref": c.citation_ref, "status": c.status, "doi": c.doi, "title": c.title}
+            for c in citations
+        ]
     })
 
 
@@ -64,4 +58,4 @@ def add_citations(request_id):
 
     CitationService().add_citations(request_id, citation_ids)
 
-    return jsonify({"status": "success", "data": {}, "meta": {}})
+    return ok({})
