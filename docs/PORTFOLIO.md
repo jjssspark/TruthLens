@@ -15,16 +15,24 @@ TruthLens는 이미지/뉴스/논문을 업로드하거나 URL·텍스트로 입
 **2. 실 API로 검증했습니다.**
 뉴스(Gemini)·논문(DeepSeek) 판별을 Mock이 아닌 실제 API 키로 테스트하면서, Mock 테스트로는 드러나지 않는 문제(DeepSeek 잔액 부족 402, 네트워크 DNS 장애 등)를 실제로 마주쳤고, 그 과정에서 예외 처리 코드의 실효성을 검증했습니다 (자세한 내용은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)).
 
-**3. 방어적 예외 처리를 "호출하는 쪽"까지 일관되게 적용했습니다.**
-모델(detector) 레벨에서만 예외를 감싸는 것으로는 부족하다는 것을 실제 버그(500 HTML 에러 페이지 노출)로 확인한 뒤, 라우트 → 서비스 → 모델 전 구간에 방어 로직을 추가했습니다. API 키가 없거나 외부 서비스가 실패해도 서버가 죽지 않고 사용자에게 이해 가능한 메시지를 반환합니다.
+**3. 에러 처리를 개별 라우트가 아니라 전역 계층에서 보장했습니다.**
+모델(detector) 레벨에서만 예외를 감싸는 것으로는 부족하다는 것을 실제 버그(500 HTML 에러 페이지 노출)로 확인했습니다. 이후 라우트마다 `try/except`를 흩뿌리는 대신 `app.py`에 전역 `errorhandler`를 등록해, 어떤 라우트에서 예외가 새더라도 응답에는 `INTERNAL_ERROR` 코드와 `traceId`만 나가고 스택 트레이스·내부 경로는 서버 로그에만 남도록 했습니다. 외부 API 장애는 우리 서버의 버그가 아니므로 500이 아닌 **502 `ANALYSIS_FAILED`** 로 구분합니다 — 알림 기준을 나누기 위해서입니다.
 
-**4. 배포 장벽을 낮췄습니다.**
+**4. 업로드 경로의 path traversal을 제거했습니다.**
+초기 구현은 `file.filename`을 sanitize 없이 `os.path.join`에 넘겨, `../../evil.jpg` 같은 이름으로 업로드 폴더 밖에 파일을 쓸 수 있었습니다. `backend/services/upload_service.py`의 `save_upload()`로 일원화해 `secure_filename` + 확장자 allowlist + uuid 접두어를 적용했고, 취약점이 실재했음을 증명하는 회귀 테스트를 함께 남겼습니다. uuid 접두어는 동명 파일이 서로를 덮어쓰던 별개의 버그도 함께 해소합니다.
+
+**5. 자체 API 규약을 코드가 실제로 지키게 했습니다.**
+`.claude/standards/api-contract.md`에 `{success, data, error}` 봉투를 정의해두고도 코드는 `{status, data, meta}`를 쓰고 있었습니다. 문서와 코드가 어긋난 상태를 방치하는 대신 `backend/api/response.py`의 `ok()`/`fail()`로 전 엔드포인트를 통일했습니다. 로깅도 마찬가지로 `observability.md`가 요구하는 구조화 JSON(`timestamp`/`level`/`message`/`traceId`/`service`)으로 바꾸고, `X-Request-Id`를 받아 `logging.Filter`로 전 계층에 자동 전파시켰습니다 — 호출부마다 traceId를 넘기도록 기대하면 반드시 누락되기 때문입니다.
+
+**6. 배포 장벽을 낮췄습니다.**
 MariaDB/Redis 설치 없이 SQLite 폴백으로 로컬 실행이 가능하게 했고, Docker Compose로 `docker compose up` 한 줄이면 외부 설정 없이 뜨도록 구성했습니다. MariaDB+Redis 조합이 필요하면 `--profile full` 옵션으로 선택적으로 전환할 수 있습니다.
 
 ## 임팩트
 
 - 신규 clone 기준 **3분 이내 실행 + 3개 핵심 기능(이미지/뉴스/논문) 시연 가능** (완료 기준 달성)
-- 테스트 커버리지 `backend/` 기준 **54% → 70%** 로 개선, 누락되어 있던 결과/마이페이지/메인 라우트 테스트 보강
-- 초기 clone 직후 31개 중 8개 실패하던 테스트 스위트를 전부 통과 상태로 안정화, 이후 5일 내내 회귀 없이 유지
+- 테스트 커버리지 `backend/` 기준 **54% → 75%**, 테스트 수 31개 → **102개**
+- 가장 안 덮여 있던 핵심 판별 로직을 집중 보강: `ai_models/image_detector.py` **23% → 96%**, `ai_models/pixel_heuristics.py` **75% → 90%**. 판정 임계값(70/40) 경계, EXIF 폴백, 히트맵 출력 형식, "노이즈가 많을수록 AI 점수가 낮아진다"는 핵심 전제를 테스트로 고정
+- 초기 clone 직후 31개 중 8개 실패하던 테스트 스위트를 전부 통과 상태로 안정화, 이후 회귀 없이 유지
+- GitHub Actions에서 외부 API 키 없이 전체 스위트가 통과하도록 CI 구성
 - 평문 비밀번호 저장, 앱 전체를 죽이는 생성자 크래시 등 보안·안정성 결함을 조기에 발견·수정
 - 발견한 11개 버그를 문제→원인→해결 형식으로 문서화해, 코드 리뷰 없이도 의사결정 과정을 추적 가능하게 함

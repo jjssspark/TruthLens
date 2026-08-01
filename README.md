@@ -1,5 +1,7 @@
 # TruthLens
 
+[![tests](https://github.com/jjssspark/TruthLens/actions/workflows/tests.yml/badge.svg)](https://github.com/jjssspark/TruthLens/actions/workflows/tests.yml)
+
 AI 생성 콘텐츠 판별 서비스 (Product Requirements Document 기반)
 
 ## 1. 프로젝트 개요
