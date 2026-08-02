@@ -128,9 +128,16 @@
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col">
+<body class="nx-dark font-body-md text-on-surface antialiased min-h-screen flex flex-col">
+<!-- 전역 배경: 그라디언트 + 회로 격자 + 유영하는 광원 -->
+<div class="nx-site-bg" aria-hidden="true">
+    <span class="nx-site-orb nx-site-orb--a"></span>
+    <span class="nx-site-orb nx-site-orb--b"></span>
+    <span class="nx-site-orb nx-site-orb--c"></span>
+</div>
+
 <!-- TopAppBar -->
-<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 flex justify-between items-center px-container-padding-mobile h-16">
+<header class="nx-topbar fixed top-0 w-full z-50 flex justify-between items-center px-container-padding-mobile h-16">
     <div class="flex items-center gap-4">
         <span class="material-symbols-outlined text-primary">menu</span>
         <a href="{{ url_for('main.index') }}" class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy no-underline">TruthLens</a>
@@ -147,7 +154,7 @@
 </main>
 
 <!-- Footer -->
-<footer class="w-full py-8 bg-surface-container-low border-t border-outline-variant/20 flex flex-col items-center justify-center space-y-4 px-container-padding-mobile text-center mb-20">
+<footer class="nx-footer w-full py-8 flex flex-col items-center justify-center space-y-4 px-container-padding-mobile text-center mb-20">
     <span class="font-label-mono text-label-mono uppercase tracking-widest text-deep-navy">TruthLens AI</span>
     <p class="font-body-sm text-body-sm text-on-surface-variant">© 2026 TruthLens AI. 디지털 정직성을 보장합니다.</p>
     <div class="flex gap-4">
@@ -178,6 +185,30 @@
 </nav>
 
 
+<script>
+/* 전역 배경 광원을 스크롤에 따라 미세하게 이동시킨다 (--nx-scroll: 0~1) */
+(function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const bg = document.querySelector('.nx-site-bg');
+    if (!bg) return;
+
+    let ticking = false;
+    const update = () => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        bg.style.setProperty('--nx-scroll', max > 0 ? (window.scrollY / max).toFixed(4) : 0);
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+    }, { passive: true });
+
+    update();
+})();
+</script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% block extra_script %}{% endblock %}
 </body>
