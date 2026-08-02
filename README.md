@@ -79,6 +79,12 @@ python app.py                     # http://localhost:3000
 - 이미지 판별(FR-02)은 외부 API 키 없이 바로 동작합니다. 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
 - **영상 판별(FR-01)은 아직 AI 모델이 연동되지 않은 스텁입니다** (`ai_models/video_detector.py`가 항상 score 0.0을 반환). 화면에는 "모델 연동 예정" 배지로 명확히 안내됩니다 — 5일 스코프에서 의도적으로 로드맵으로 남긴 부분입니다.
 
+### 알려진 한계
+
+- **영상 판별(FR-01) 모델 미연동** — 위 항목 참고.
+- **Tailwind를 CDN(`cdn.tailwindcss.com`)으로 로드합니다.** 공식 문서가 프로덕션 사용을 권장하지 않는 개발용 스크립트입니다. 현재 `?plugins=forms,container-queries`로 플러그인 2개를 함께 받고 있어, CLI 빌드로 전환하려면 두 플러그인을 빌드 설정에 옮기고 폼 스타일 회귀를 확인해야 합니다. 로드맵으로 남겨둔 부분입니다.
+- **뉴스만 DB 캐시, 나머지는 Redis 캐시** — 7절 "캐싱 전략" 참고.
+
 **시연 시나리오와 진행상황 확인 방법**은 [`docs/DEMO.md`](docs/DEMO.md)를, 개발 중 발견한 버그와 해결 과정은 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)를 참고하세요.
 
 ### Docker로 실행
