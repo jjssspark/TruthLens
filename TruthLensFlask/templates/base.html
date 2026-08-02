@@ -138,10 +138,7 @@
 
 <!-- TopAppBar -->
 <header class="nx-topbar fixed top-0 w-full z-50 flex justify-between items-center px-container-padding-mobile h-16">
-    <div class="flex items-center gap-4">
-        <span class="material-symbols-outlined text-primary">menu</span>
-        <a href="{{ url_for('main.index') }}" class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy no-underline">TruthLens</a>
-    </div>
+    <a href="{{ url_for('main.index') }}" class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy no-underline">TruthLens</a>
     <div class="flex items-center gap-2">
         <a href="{{ url_for('main.history') }}" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high/50 transition-colors p-2 rounded-full no-underline">history</a>
         <a href="{{ url_for('main.login') }}" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high/50 transition-colors p-2 rounded-full no-underline">login</a>
