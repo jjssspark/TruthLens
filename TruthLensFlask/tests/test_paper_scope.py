@@ -158,6 +158,42 @@ def test_document_tail_reaches_the_model(detector):
     assert '결론부표식' in sent_prompt
 
 
+def test_failed_analysis_is_not_stored_as_a_zero_score(app, logged_in_client):
+    """분석 실패를 'AI 생성 0%'라는 판정으로 저장하지 않는다
+
+    판별기는 실패를 예외 대신 details.error + score 0으로 돌려준다.
+    그대로 두면 사용자에게는 정상 판정처럼 보이고, 캐시에까지 들어가
+    재시도해도 같은 0%가 나온다.
+    """
+    import io
+
+    from backend.models.detection_request import DetectionRequest
+    from backend.models.detection_result import DetectionResult
+
+    failure = {"score": 0, "details": {"error": "DeepSeek API 잔액이 부족합니다.",
+                                       "section_scores": {}, "suspicious_paragraphs": [],
+                                       "summary": "", "key_claims": []}}
+
+    with patch.object(PaperDetector, 'detect', return_value=failure), \
+            patch('backend.services.paper_service.set_cached_result') as mock_cache:
+        response = logged_in_client.post(
+            '/api/v1/detect/paper',
+            data={'file': (io.BytesIO(b'%PDF-1.4 fake'), 'paper.pdf')},
+            content_type='multipart/form-data',
+        )
+
+    body = response.get_json()
+    assert response.status_code == 502
+    assert body["error"]["code"] == "ANALYSIS_FAILED"
+    assert '잔액' in body["error"]["message"]
+
+    mock_cache.assert_not_called()
+
+    with app.app_context():
+        assert DetectionResult.query.count() == 0
+        assert DetectionRequest.query.first().status == 'failed'
+
+
 def test_detect_surfaces_scope_in_details():
     """detect() 결과의 details에 분석 범위가 실린다"""
     analysis = {

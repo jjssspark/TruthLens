@@ -15,6 +15,14 @@ from cache.redis_client import get_cached_result, set_cached_result
 from backend.services.cache_record_service import record_cache_hit, record_cache_miss, record_request
 
 
+class PaperAnalysisError(RuntimeError):
+    """논문 분석이 실패한 경우.
+
+    사용자에게 그대로 보여줄 수 있도록 정제된 메시지만 담는다
+    (PaperDetector._friendly_error_message가 이미 걸러낸 문구).
+    """
+
+
 class PaperService:
     """논문 AI 생성 판별 및 분석 비즈니스 로직 (FR-04)"""
 
@@ -44,6 +52,16 @@ class PaperService:
             record_cache_hit(content_hash)
         else:
             result = self.detector.detect(file_path)
+
+            # 판별기는 실패를 예외 대신 details.error로 돌려주고 score를 0으로 둔다.
+            # 그대로 두면 "AI 생성 가능성 0%"라는 판정처럼 저장되고, 캐시에까지
+            # 들어가 재시도해도 API를 타지 않는다. 실패는 실패로 올려보낸다.
+            error_message = result["details"].get("error")
+            if error_message:
+                detection_request.status = 'failed'
+                db.session.commit()
+                raise PaperAnalysisError(error_message)
+
             set_cached_result(content_hash, json.dumps(result))
             is_cached = False
             record_cache_miss(content_hash)

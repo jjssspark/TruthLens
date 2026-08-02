@@ -3,7 +3,7 @@ from flask import Blueprint, current_app, render_template, request
 from backend.api.response import fail, ok
 from backend.models.paper_citation import PaperCitation
 from backend.services.citation_service import CitationService
-from backend.services.paper_service import PaperService
+from backend.services.paper_service import PaperAnalysisError, PaperService
 from backend.services.upload_service import UnsupportedFileType, save_upload
 
 paper_bp = Blueprint('paper', __name__)
@@ -31,6 +31,12 @@ def detect_paper_api():
 
     try:
         detection_request = PaperService().analyze(save_path)
+    except PaperAnalysisError as e:
+        # 정제된 사유(API 잔액 부족, 키 미설정 등)는 그대로 알려주는 편이
+        # "잠시 후 다시 시도"보다 훨씬 도움이 된다
+        current_app.logger.warning("논문 분석 실패: %s", e,
+                                   extra={"event": "paper.analyze.failed"})
+        return fail("ANALYSIS_FAILED", str(e), 502)
     except Exception:
         current_app.logger.exception("논문 분석 실패", extra={"event": "paper.analyze.failed"})
         return fail("ANALYSIS_FAILED", "논문 분석에 실패했습니다. 잠시 후 다시 시도해주세요.", 502)
