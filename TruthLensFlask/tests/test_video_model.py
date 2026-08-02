@@ -74,6 +74,7 @@ def test_falls_back_to_heuristic_without_token(video_path, monkeypatch):
 
     assert details["method"] == METHOD_HEURISTIC
     assert details["model"] is None
+    assert "휴리스틱" in details["summary"]
 
 
 def test_uses_model_when_token_is_present(video_path, monkeypatch):
@@ -90,6 +91,10 @@ def test_uses_model_when_token_is_present(video_path, monkeypatch):
     # 모델 90 * 0.8 = 72 이상. 휴리스틱만 썼다면 이 값이 나올 수 없다.
     assert result["score"] >= 72.0
     assert details["is_deepfake"] is True
+    # 요약문도 방식을 정확히 말해야 한다. details.method만 맞고 문구가 어긋나면
+    # 요약만 읽는 사용자는 여전히 잘못된 정보를 받는다.
+    assert DEFAULT_MODEL in details["summary"]
+    assert "휴리스틱" not in details["summary"]
 
 
 def test_falls_back_when_model_call_fails(video_path, monkeypatch):

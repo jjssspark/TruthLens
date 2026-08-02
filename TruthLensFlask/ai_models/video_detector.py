@@ -95,7 +95,8 @@ class VideoDetector(BaseDetector):
                 # 휴리스틱 결과를 모델 결과처럼 보이게 하면 안 된다.
                 "method": method,
                 "model": model_name,
-                "summary": self._make_summary(ai_percent, confidence, is_deepfake, len(frame_results)),
+                "summary": self._make_summary(ai_percent, confidence, is_deepfake,
+                                              len(frame_results), method, model_name),
             },
         }
 
@@ -209,7 +210,8 @@ class VideoDetector(BaseDetector):
         seconds = max(0, int(seconds))
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
-    def _make_summary(self, ai_percent, confidence, is_deepfake, sampled_frames):
+    def _make_summary(self, ai_percent, confidence, is_deepfake, sampled_frames,
+                      method=METHOD_HEURISTIC, model_name=None):
         if is_deepfake:
             verdict = "딥페이크 가능성이 높습니다"
         elif ai_percent >= 40:
@@ -217,10 +219,14 @@ class VideoDetector(BaseDetector):
         else:
             verdict = "실제 촬영 영상일 가능성이 높습니다"
 
-        return (
-            f"{verdict} | AI 개입 {ai_percent}% | 신뢰도 {confidence}% | "
-            f"샘플링된 프레임 {sampled_frames}개 기준 로컬 휴리스틱 분석 (외부 API 미사용)"
-        )
+        # 판정 방식을 요약문에도 정확히 적는다. details.method만 맞고 문구가
+        # 어긋나면, 요약만 읽는 사용자는 여전히 잘못된 정보를 받는다.
+        if method == METHOD_MODEL:
+            basis = f"프레임 {sampled_frames}개를 딥페이크 판별 모델({model_name})로 분석"
+        else:
+            basis = f"프레임 {sampled_frames}개 기준 로컬 픽셀 휴리스틱 분석 (외부 모델 미사용)"
+
+        return f"{verdict} | AI 개입 {ai_percent}% | 신뢰도 {confidence}% | {basis}"
 
     def _error_result(self, message):
         logger.warning("영상 분석 실패: %s", message)
