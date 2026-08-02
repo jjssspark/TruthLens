@@ -10,6 +10,14 @@ _REDACT_KEYS = {'password', 'token', 'authorization', 'api_key', 'apikey', 'secr
 # extra로 들어온 것 중 로그에 실어 보낼 선택 필드
 _OPTIONAL_FIELDS = ('event', 'durationMs', 'userId')
 
+# DEBUG 레벨에서 요청 본문·연결 상세를 쏟아내는 라이브러리들.
+# openai는 프롬프트 전체를, httpcore/httpx는 소켓 단계까지 남긴다.
+NOISY_LIBRARY_LOGGERS = (
+    'openai', 'httpx', 'httpcore', 'urllib3',
+    'google', 'google_genai', 'google.generativeai',
+    'redis', 'asyncio', 'PIL',
+)
+
 
 class RequestIdFilter(logging.Filter):
     """flask.g의 trace_id를 모든 레코드에 주입한다.
@@ -66,3 +74,9 @@ def configure_logging(app):
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(logging.DEBUG if app.config.get('DEBUG') else logging.INFO)
+
+    # DEBUG를 켜면 이 라이브러리들이 요청 본문을 통째로 찍는다.
+    # 특히 openai SDK는 프롬프트 전체(= 논문 전문)를 로그에 남긴다.
+    # observability.md: 요청/응답 본문 전체를 로그에 남기지 않는다.
+    for name in NOISY_LIBRARY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)

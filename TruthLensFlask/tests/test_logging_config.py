@@ -103,6 +103,24 @@ def test_filter_is_safe_outside_request_context():
     assert record.trace_id is None
 
 
+def test_third_party_libraries_never_log_request_bodies(app):
+    """DEBUG를 켜도 서드파티 라이브러리는 본문을 찍지 않는다
+
+    openai SDK는 DEBUG에서 프롬프트 전체(= 논문 전문)를 로그에 남긴다.
+    observability.md가 금지한 '요청 본문 전체'가 그대로 쌓인다.
+    """
+    from backend.logging_config import NOISY_LIBRARY_LOGGERS
+
+    for name in NOISY_LIBRARY_LOGGERS:
+        assert logging.getLogger(name).level >= logging.WARNING, name
+
+
+def test_application_logger_still_reaches_info(app):
+    """서드파티를 낮춰도 우리 코드의 로그는 막히지 않는다"""
+    assert logging.getLogger().level <= logging.INFO
+    assert logging.getLogger('backend.services.image_service').getEffectiveLevel() <= logging.INFO
+
+
 def test_app_logs_are_json(app):
     """create_app이 붙인 루트 핸들러가 실제로 JSON 한 줄을 내보낸다
 
