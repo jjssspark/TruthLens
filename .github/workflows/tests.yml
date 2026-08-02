@@ -31,4 +31,5 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
         env:
-          DATABASE_URL: sqlite:///:memory:
+          # 따옴표 필수 — 끝의 콜론을 YAML이 매핑 구분자로 읽는다
+          DATABASE_URL: "sqlite:///:memory:"
