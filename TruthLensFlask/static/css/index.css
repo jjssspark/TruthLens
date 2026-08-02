@@ -226,15 +226,22 @@ body.nx-dark .upload-dashed {
   background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%2322d3ee' stroke-opacity='0.45' stroke-width='1.5' stroke-dasharray='8%2c 8' stroke-linecap='square'/%3e%3c/svg%3e");
 }
 
-/* result.html·mypage.html이 각자 <style> 블록에 정의한 밝은 카드.
-   .glass-card는 특이도 (0,1,0)이라 (0,2,1)인 아래 규칙이 이긴다. */
-body.nx-dark .glass-card {
+/* 템플릿 <style> 블록에 직접 정의된 밝은 표면들.
+   .glass-card(result/mypage), .glass-panel(base → 뉴스·영상)
+   모두 rgba(255,255,255,0.8)로 박혀 있어 유틸리티 재정의에 걸리지 않는다.
+   특이도 (0,1,0)이므로 (0,2,1)인 아래 규칙이 이긴다. */
+body.nx-dark .glass-card,
+body.nx-dark .glass-panel {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
   border-color: rgba(148, 197, 255, 0.16);
 }
 
 /* 게이지 미충전 구간이 흰색이라 다크에서 과하게 튄다 */
 body.nx-dark .gauge-bg { stroke: rgba(255, 255, 255, 0.1); }
+
+/* 뉴스·영상 페이지의 활성 탭이 color:#06070f(거의 검정)라 다크에서 안 읽힌다.
+   선택된 탭이 오히려 흐려 보이는 역전이 생긴다. */
+body.nx-dark .active-tab { color: #22d3ee; }
 
 body.nx-dark .grid-bg {
   background-image: radial-gradient(circle, rgba(34, 211, 238, 0.18) 1.2px, transparent 1.2px);
