@@ -1,10 +1,14 @@
 import json
+import os
 import re
 
 import google.generativeai as genai
 
 from ai_models.base_detector import BaseDetector
 from config import Config
+
+
+GEMINI_TIMEOUT_SEC = int(os.getenv("GEMINI_TIMEOUT_SEC", 30))
 
 
 class NewsDetector(BaseDetector):
@@ -30,8 +34,13 @@ class NewsDetector(BaseDetector):
 
         genai.configure(api_key=Config.GEMINI_API_KEY)
 
+        # gemini-2.5-flash는 내부 추론(thinking)을 수행해 같은 프롬프트에서
+        # 약 16초가 걸린다. lite는 1.3초로 12배 빠르다. 구 SDK
+        # (google-generativeai)는 thinking_config를 지원하지 않아 추론만
+        # 끌 방법이 없으므로 모델 선택으로 해결한다.
+        # 정확도를 우선하려면 GEMINI_MODEL=gemini-2.5-flash로 되돌린다.
         self.model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash"
+            model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
         )
 
     def detect(self, content):
@@ -56,7 +65,10 @@ class NewsDetector(BaseDetector):
             # Gemini 호출
             #############################################
 
-            response = self.model.generate_content(prompt)
+            # 타임아웃이 없으면 응답이 늦을 때 요청 스레드가 무한정 묶인다
+            response = self.model.generate_content(
+                prompt, request_options={"timeout": GEMINI_TIMEOUT_SEC}
+            )
 
             #############################################
             # 응답 문자열

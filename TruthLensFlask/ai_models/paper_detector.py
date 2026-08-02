@@ -14,6 +14,11 @@ class BaseDetector: pass
 
 logger = logging.getLogger(__name__)
 
+# deepseek-chat 컨텍스트(64K 토큰) 안에서 안전한 상한.
+# 이 길이를 넘는 논문은 앞부분만 분석되며, 그 사실을 결과에 표시한다.
+MAX_ANALYZED_CHARS = int(os.getenv("PAPER_MAX_CHARS", 50000))
+
+
 class PaperDetector(BaseDetector):
     """논문 AI 생성 판별 및 자동 요약 모델"""
 
@@ -73,9 +78,10 @@ class PaperDetector(BaseDetector):
         if not self._api_key_configured:
             raise ValueError("DEEPSEEK_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.")
 
-        # [수정] 입력 텍스트를 최소 15,000자 이상으로 늘려 논문 전체가 들어갈 수 있도록 합니다.
-        # DeepSeek는 비용이 저렴하므로 더 늘려도 무방합니다.
-        truncated_text = text[:20000]
+        # deepseek-chat의 컨텍스트는 64K 토큰이라 5만자까지는 안전하게 들어간다.
+        # 그래도 200페이지 논문은 넘치므로 잘린 사실을 결과로 되돌려 표시한다.
+        # 앞부분만 보고 전체를 판정한 것처럼 보이면 안 된다.
+        truncated_text = text[:MAX_ANALYZED_CHARS]
 
         prompt = f"""
 너는 학술 논문의 AI 작성 여부를 정밀 분석하고 요약하는 전문가야.
@@ -149,7 +155,34 @@ DOI를 찾을 수 없으면 null
         logger.info("DeepSeek 응답 수신 (길이: %d자)", len(result_text or ""))
         logger.debug("DeepSeek 응답 원문: %s", result_text)
 
-        return self.parse_json_response(result_text)
+        parsed = self.parse_json_response(result_text)
+
+        # 분석 범위를 결과에 함께 실어 보낸다. 잘린 채로 전체 판정처럼
+        # 보이면 점수를 신뢰할 수 없다.
+        parsed["analyzed_chars"] = len(truncated_text)
+        parsed["total_chars"] = len(text)
+        parsed["truncated"] = len(text) > len(truncated_text)
+        if parsed["truncated"]:
+            logger.warning(
+                "논문이 길어 앞 %d자만 분석했습니다 (전체 %d자)",
+                len(truncated_text), len(text),
+                extra={"event": "paper.text.truncated"},
+            )
+
+        return parsed
+
+    @staticmethod
+    def _scope_note(result):
+        """분석 범위를 사람이 읽을 문장으로 만든다."""
+        analyzed = result.get("analyzed_chars", 0)
+        total = result.get("total_chars", 0)
+        if not result.get("truncated"):
+            return f"논문 전문({total:,}자)을 분석했습니다."
+        percent = round(analyzed / total * 100) if total else 0
+        return (
+            f"논문이 길어 앞 {analyzed:,}자만 분석했습니다 "
+            f"(전체 {total:,}자 중 약 {percent}%). 뒷부분은 판정에 반영되지 않았습니다."
+        )
 
     def detect(self, file_path):
         try:
@@ -194,6 +227,11 @@ DOI를 찾을 수 없으면 null
                     "summary": result.get("summary", ""),
                     "key_claims": result.get("key_claims", []),
                     "citations": result.get("citations", []),
+                    # 어디까지 읽고 판정했는지 밝힌다
+                    "analyzed_chars": result.get("analyzed_chars", 0),
+                    "total_chars": result.get("total_chars", 0),
+                    "truncated": result.get("truncated", False),
+                    "scope_note": self._scope_note(result),
                 },
             }
 
