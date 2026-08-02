@@ -7,7 +7,96 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_models.paper_detector import MAX_ANALYZED_CHARS, PaperDetector
+from ai_models.paper_detector import (
+    MAX_ANALYZED_CHARS,
+    PaperDetector,
+    build_representative_excerpt,
+    strip_references,
+    strip_repeated_lines,
+)
+
+
+# --- 참고문헌 제거 ---
+
+def test_strips_reference_section():
+    """문서 후반부의 참고문헌 제목 이후를 잘라낸다"""
+    body = '\n'.join(f'본문 {i}번째 문장입니다.' for i in range(200))
+    refs = 'References\n' + '\n'.join(f'[{i}] Kim, 2020.' for i in range(100))
+
+    result = strip_references(body + '\n' + refs)
+
+    assert 'Kim, 2020' not in result
+    assert '본문 199번째' in result
+
+
+def test_keeps_early_mention_of_references():
+    """본문 앞부분의 'References' 언급으로는 자르지 않는다
+
+    서론에서 선행연구를 언급하며 나온 단어까지 자르면 논문 대부분이 사라진다.
+    """
+    text = 'References\n' + '\n'.join(f'본문 {i}번째 문장입니다.' for i in range(500))
+
+    assert strip_references(text) == text
+
+
+# --- 반복 줄 제거 ---
+
+def test_strips_repeated_headers_and_page_numbers():
+    """페이지마다 반복되는 머리말과 쪽번호를 지운다"""
+    pages = []
+    for p in range(20):
+        pages.append('TruthLens 학술지 제12권')
+        pages += [f'{p}쪽 {i}번째 고유 문장입니다.' for i in range(10)]
+        pages.append(str(p))
+
+    result = strip_repeated_lines('\n'.join(pages))
+
+    assert 'TruthLens 학술지' not in result
+    assert '0쪽 0번째 고유 문장입니다.' in result
+
+
+def test_skips_stripping_when_it_would_destroy_the_document():
+    """반복 줄 제거가 본문 대부분을 지우면 포기하고 원문을 쓴다
+
+    표 행이나 짧은 항목 나열이 많은 논문에서 본문이 통째로 날아가는 것을 막는다.
+    """
+    text = '\n'.join(['같은 줄입니다.'] * 500)
+
+    assert strip_repeated_lines(text) == text
+
+
+# --- 균등 발췌 ---
+
+def test_short_text_is_returned_whole():
+    """상한보다 짧으면 그대로 쓴다"""
+    text = '짧은 논문입니다.'
+
+    assert build_representative_excerpt(text, limit=1000) == (text, 1)
+
+
+def test_excerpt_covers_beginning_middle_and_end():
+    """앞에서만 자르지 않고 서론·본론·결론을 고루 담는다"""
+    head = '\n'.join(['서론 문장'] * 2000)
+    middle = '\n'.join(['본론 문장'] * 8000)
+    tail = '\n'.join(['결론 문장'] * 2000)
+
+    excerpt, segments = build_representative_excerpt(head + middle + tail, limit=5000)
+
+    assert '서론' in excerpt and '본론' in excerpt and '결론' in excerpt
+    assert segments > 1
+    assert len(excerpt) <= 5000 + 100   # 구분자 여유
+
+
+def test_excerpt_marks_omitted_gaps():
+    """발췌 구간 사이가 이어지지 않음을 표시한다
+
+    표시가 없으면 모델이 끊긴 문장을 비문으로 오인해 점수가 왜곡된다.
+    """
+    text = '가' * 200000
+
+    excerpt, _ = build_representative_excerpt(text, limit=5000)
+
+    assert '중략' in excerpt
 
 
 def _fake_response(payload='{"ai_score": 42, "summary": "요약"}'):
@@ -24,44 +113,49 @@ def detector(monkeypatch):
 
 
 def test_short_paper_is_analyzed_in_full(detector):
-    """상한보다 짧은 논문은 전문을 분석하고 그렇게 표시한다"""
-    text = '가' * 1000
+    """상한보다 짧은 논문은 본문 전체를 분석하고 그렇게 표시한다"""
+    text = '\n'.join(f'{i}번째 고유 문장입니다.' for i in range(50))
 
     with patch.object(detector.client.chat.completions, 'create', return_value=_fake_response()):
         result = detector.analyze_with_gpt(text)
 
     assert result["truncated"] is False
-    assert result["analyzed_chars"] == 1000
-    assert result["total_chars"] == 1000
-    assert '전문' in PaperDetector._scope_note(result)
+    assert result["analyzed_chars"] == len(text)
+    assert '본문 전체' in PaperDetector._scope_note(result)
 
 
-def test_long_paper_reports_truncation(detector):
-    """상한을 넘으면 잘린 사실과 비율을 밝힌다"""
-    text = '가' * (MAX_ANALYZED_CHARS * 2)
+def test_long_paper_reports_sampling(detector):
+    """상한을 넘으면 발췌 사실과 비율을 밝힌다"""
+    text = '\n'.join(f'{i}번째 고유 문장으로 서로 다른 내용입니다.' for i in range(20000))
 
     with patch.object(detector.client.chat.completions, 'create', return_value=_fake_response()):
         result = detector.analyze_with_gpt(text)
 
     assert result["truncated"] is True
-    assert result["analyzed_chars"] == MAX_ANALYZED_CHARS
-    assert result["total_chars"] == MAX_ANALYZED_CHARS * 2
+    assert result["segments"] > 1
+    assert result["total_chars"] == len(text)
+    assert result["analyzed_chars"] < result["body_chars"]
 
     note = PaperDetector._scope_note(result)
-    assert '앞' in note and '50%' in note
+    assert '고르게 뽑아' in note
     assert '반영되지 않았습니다' in note
 
 
-def test_only_the_analyzed_prefix_is_sent(detector):
-    """상한을 넘는 부분은 실제로 전송되지 않는다"""
-    text = '가' * MAX_ANALYZED_CHARS + '뒷부분표식' * 100
+def test_document_tail_reaches_the_model(detector):
+    """문서 끝부분도 실제로 전송된다
+
+    앞에서만 자르던 이전 동작에서는 결론·고찰이 통째로 빠졌다.
+    이 테스트가 그 회귀를 막는다.
+    """
+    filler = '\n'.join(f'{i}번째 본문 문장입니다.' for i in range(20000))
+    text = filler + '\n' + '\n'.join(['결론부표식 문장입니다.'] * 3)
 
     with patch.object(detector.client.chat.completions, 'create',
                       return_value=_fake_response()) as mock_create:
         detector.analyze_with_gpt(text)
 
     sent_prompt = mock_create.call_args.kwargs['messages'][0]['content']
-    assert '뒷부분표식' not in sent_prompt
+    assert '결론부표식' in sent_prompt
 
 
 def test_detect_surfaces_scope_in_details():
