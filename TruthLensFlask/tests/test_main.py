@@ -67,6 +67,30 @@ def test_index_counts_ai_detections(app, logged_in_client):
     assert 'data-count-to="2"' in body   # 그중 AI 판정 2건
 
 
+def test_video_badge_reflects_configured_token(logged_in_client, monkeypatch):
+    """HF_TOKEN이 있으면 영상 카드가 모델 연동 상태로 표시된다"""
+    monkeypatch.setenv('HF_TOKEN', 'hf_test-token')
+
+    body = logged_in_client.get('/').data.decode()
+
+    assert '딥페이크 모델 연동됨' in body
+    assert '휴리스틱 모드' not in body
+
+
+def test_video_badge_reflects_missing_token(logged_in_client, monkeypatch):
+    """HF_TOKEN이 없으면 휴리스틱 모드임을 그대로 밝힌다
+
+    고정 문구를 쓰면 연동해두고 '예정'으로 남거나, 키가 없는데 연동된 것처럼
+    보인다. 둘 다 사용자에게 거짓말이 된다.
+    """
+    monkeypatch.delenv('HF_TOKEN', raising=False)
+
+    body = logged_in_client.get('/').data.decode()
+
+    assert '휴리스틱 모드' in body
+    assert '딥페이크 모델 연동됨' not in body
+
+
 def test_index_handles_request_without_result(app, logged_in_client):
     """결과 레코드가 아직 없는 요청도 렌더링이 깨지지 않는다"""
     with app.app_context():

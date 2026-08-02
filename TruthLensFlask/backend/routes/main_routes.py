@@ -1,3 +1,5 @@
+import os
+
 from flask import Blueprint, render_template
 from flask import session, redirect, url_for
 
@@ -40,6 +42,13 @@ def index():
         recent=recent,
         total_scans=DetectionRequest.query.filter_by(user_id=user_id).count(),
         ai_detected=ai_detected,
+        # 카드 배지가 실제 설정 상태를 말하게 한다. 키가 없는데 "연동됨"으로
+        # 보이거나, 연동해두고 "예정"으로 남아 있으면 둘 다 거짓말이 된다.
+        configured_keys={
+            'GEMINI_API_KEY': bool(os.getenv('GEMINI_API_KEY')),
+            'DEEPSEEK_API_KEY': bool(os.getenv('DEEPSEEK_API_KEY')),
+            'HF_TOKEN': bool(os.getenv('HF_TOKEN')),
+        },
     )
 
 

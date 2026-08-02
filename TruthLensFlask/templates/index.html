@@ -3,19 +3,25 @@
 {% block title %}TruthLens — AI 생성 콘텐츠 판별{% endblock %}
 {% block content %}
 
+{# 배지는 실제 환경변수 설정 상태를 반영한다. 고정 문구를 두면
+   연동해두고도 "예정"으로 남거나, 키가 없는데 연동된 것처럼 보인다. #}
 {% set modes = [
   {'icon': 'image', 'title': '이미지 분석',
    'desc': '픽셀 노이즈 균일도·엣지 매끄러움·색상 분포 3축 휴리스틱과 EXIF 메타데이터를 교차 검증합니다.',
-   'url': url_for('image.detect_image_page'), 'tag': 'API 키 불필요', 'ready': true},
+   'url': url_for('image.detect_image_page'),
+   'key': none, 'on_label': 'API 키 불필요', 'off_label': ''},
   {'icon': 'newspaper', 'title': '뉴스 분석',
    'desc': 'Gemini로 AI 생성 텍스트·가짜뉴스 가능성을 판정하고 의심 문장을 표시합니다.',
-   'url': url_for('news.detect_news_page'), 'tag': 'GEMINI_API_KEY', 'ready': true},
+   'url': url_for('news.detect_news_page'),
+   'key': 'GEMINI_API_KEY', 'on_label': 'Gemini 연결됨', 'off_label': 'GEMINI_API_KEY 필요'},
   {'icon': 'description', 'title': '문서 분석',
    'desc': 'PDF 섹션별 AI 생성 비율, 자동 요약, 본문–참고문헌 인용 교차 검증을 수행합니다.',
-   'url': url_for('paper.detect_paper_page'), 'tag': 'DEEPSEEK_API_KEY', 'ready': true},
+   'url': url_for('paper.detect_paper_page'),
+   'key': 'DEEPSEEK_API_KEY', 'on_label': 'DeepSeek 연결됨', 'off_label': 'DEEPSEEK_API_KEY 필요'},
   {'icon': 'videocam', 'title': '영상 분석',
-   'desc': '프레임을 최대 16장 균등 샘플링해 이미지 휴리스틱 + 프레임 간 시간적 일관성을 봅니다.',
-   'url': url_for('video.detect_video_page'), 'tag': '모델 연동 예정', 'ready': false}
+   'desc': '프레임을 최대 16장 균등 샘플링해 딥페이크 판별 모델로 분석하고, 프레임 간 시간적 일관성을 함께 봅니다.',
+   'url': url_for('video.detect_video_page'),
+   'key': 'HF_TOKEN', 'on_label': '딥페이크 모델 연동됨', 'off_label': '휴리스틱 모드'}
 ] %}
 
 <div class="nx">
@@ -116,6 +122,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                 {% for mode in modes %}
+                {% set is_active = mode.key is none or configured_keys.get(mode.key) %}
                 <a href="{{ mode.url }}"
                    class="nx-card nx-rise group flex flex-col p-6 no-underline text-white"
                    style="--nx-delay:{{ loop.index0 * 90 }}ms">
@@ -127,8 +134,8 @@
                                 <span class="material-symbols-outlined">{{ mode.icon }}</span>
                             </div>
                             <span class="font-label-mono text-[10px] px-2 py-1 rounded-md border
-                                         {% if mode.ready %}border-[#22d3ee]/30 text-[#22d3ee]/90{% else %}border-amber-400/40 text-amber-300/90{% endif %}">
-                                {{ mode.tag }}
+                                         {% if is_active %}border-[#22d3ee]/30 text-[#22d3ee]/90{% else %}border-amber-400/40 text-amber-300/90{% endif %}">
+                                {{ mode.on_label if is_active else mode.off_label }}
                             </span>
                         </div>
 
