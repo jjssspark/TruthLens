@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 from ai_models.base_detector import BaseDetector
+from ai_models.hf_deepfake_client import HFDeepfakeClient, HFInferenceError
 from ai_models.pixel_heuristics import analyze_pixel_patterns
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,12 @@ logger = logging.getLogger(__name__)
 MAX_SAMPLED_FRAMES = 16
 FRAME_SIZE = (224, 224)
 SUSPICIOUS_FRAME_THRESHOLD = 65
+
+# 모델 호출은 프레임당 1회 왕복이라 지연·쿼터를 감안해 더 적게 쓴다
+MAX_MODEL_FRAMES = 8
+
+METHOD_MODEL = "hf-model"
+METHOD_HEURISTIC = "local-heuristic"
 
 
 class VideoDetector(BaseDetector):
@@ -39,22 +46,33 @@ class VideoDetector(BaseDetector):
         if not frames:
             return self._error_result("영상에서 분석 가능한 프레임을 추출하지 못했습니다.")
 
-        frame_results = []
+        heuristic_results = []
         for timestamp_sec, frame_bgr in frames:
             frame_rgb = cv2.cvtColor(cv2.resize(frame_bgr, FRAME_SIZE), cv2.COLOR_BGR2RGB)
             analysis = analyze_pixel_patterns(frame_rgb)
-            frame_results.append({
+            heuristic_results.append({
                 "timestamp_sec": timestamp_sec,
                 "ai_percent": analysis["ai_percent"],
                 "confidence": analysis["confidence"],
             })
 
-        pixel_ai_percent = round(float(np.mean([f["ai_percent"] for f in frame_results])), 1)
+        pixel_ai_percent = round(float(np.mean([f["ai_percent"] for f in heuristic_results])), 1)
         temporal = self._analyze_temporal_consistency(frames)
 
-        # 프레임 평균 픽셀 휴리스틱 70% + 시간적 일관성 이상 신호 30%
-        ai_percent = round(pixel_ai_percent * 0.7 + temporal["temporal_ai_score"] * 0.3, 1)
-        confidence = round(float(np.mean([f["confidence"] for f in frame_results])), 1)
+        # 학습 모델을 쓸 수 있으면 그 판정을 주 신호로 삼고, 아니면 휴리스틱으로 돌아간다
+        model_results, method, model_name = self._classify_with_model(frames)
+
+        if model_results:
+            frame_results = model_results
+            primary_percent = round(float(np.mean([f["ai_percent"] for f in model_results])), 1)
+            # 모델 판정 80% + 시간적 일관성 20%
+            ai_percent = round(primary_percent * 0.8 + temporal["temporal_ai_score"] * 0.2, 1)
+            confidence = round(float(np.mean([f["confidence"] for f in model_results])), 1)
+        else:
+            frame_results = heuristic_results
+            # 프레임 평균 픽셀 휴리스틱 70% + 시간적 일관성 이상 신호 30%
+            ai_percent = round(pixel_ai_percent * 0.7 + temporal["temporal_ai_score"] * 0.3, 1)
+            confidence = round(float(np.mean([f["confidence"] for f in heuristic_results])), 1)
 
         frame_highlights = [
             self._format_timestamp(f["timestamp_sec"])
@@ -73,9 +91,56 @@ class VideoDetector(BaseDetector):
                 "pixel_ai_percent": pixel_ai_percent,
                 "temporal_consistency": temporal["note"],
                 "confidence": confidence,
+                # 어떤 방식으로 판정했는지 반드시 노출한다.
+                # 휴리스틱 결과를 모델 결과처럼 보이게 하면 안 된다.
+                "method": method,
+                "model": model_name,
                 "summary": self._make_summary(ai_percent, confidence, is_deepfake, len(frame_results)),
             },
         }
+
+    def _classify_with_model(self, frames):
+        """학습된 딥페이크 모델로 프레임을 판정한다.
+
+        반환: (프레임별 결과 리스트 또는 None, 사용한 방식, 모델 이름 또는 None)
+        토큰이 없거나 호출이 실패하면 None을 돌려 호출부가 휴리스틱으로 폴백하게 한다.
+        """
+        client = HFDeepfakeClient.from_env()
+        if client is None:
+            return None, METHOD_HEURISTIC, None
+
+        # 프레임당 1회 왕복이므로 균등 간격으로 솎아낸다
+        step = max(1, len(frames) // MAX_MODEL_FRAMES)
+        targets = frames[::step][:MAX_MODEL_FRAMES]
+
+        results = []
+        for timestamp_sec, frame_bgr in targets:
+            ok, buffer = cv2.imencode('.jpg', frame_bgr)
+            if not ok:
+                logger.warning("프레임 JPEG 인코딩 실패", extra={"event": "video.frame.encode_failed"})
+                continue
+            try:
+                fake_percent = client.fake_percent(buffer.tobytes())
+            except HFInferenceError as e:
+                # 한 프레임이라도 실패하면 통째로 휴리스틱으로 돌아간다.
+                # 일부만 모델 판정인 혼합 결과는 해석할 수 없다.
+                logger.warning("딥페이크 모델 호출 실패, 로컬 휴리스틱으로 폴백합니다: %s", e,
+                               extra={"event": "video.model.fallback"})
+                return None, METHOD_HEURISTIC, None
+            results.append({
+                "timestamp_sec": timestamp_sec,
+                "ai_percent": fake_percent,
+                # 모델은 프레임별 신뢰도를 따로 주지 않는다. 판정이 0.5에서
+                # 멀수록 확신이 크다고 보고 0~100으로 환산한다.
+                "confidence": round(abs(fake_percent - 50) * 2, 1),
+            })
+
+        if not results:
+            return None, METHOD_HEURISTIC, None
+
+        logger.info("딥페이크 모델로 %d개 프레임 판정 완료", len(results),
+                    extra={"event": "video.model.completed"})
+        return results, METHOD_MODEL, client.model
 
     def _sample_frames(self, capture):
         """영상 전체 구간에서 최대 MAX_SAMPLED_FRAMES개 프레임을 균등 샘플링한다."""
