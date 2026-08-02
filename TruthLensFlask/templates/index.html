@@ -21,7 +21,7 @@
 <div class="nx">
 
 <!-- ============ 뉴럴 콘솔: 히어로 + 탐지 스위트 ============ -->
-<section class="nx-console px-gutter md:px-12 py-14 md:py-20">
+<section class="nx-console px-gutter md:px-12 py-20 md:py-28">
     <canvas class="nx-canvas" id="nx-neural" aria-hidden="true"></canvas>
     <div class="nx-orb nx-orb--cyan" style="top:-90px; right:-60px;" aria-hidden="true"></div>
     <div class="nx-orb nx-orb--blue" style="bottom:-120px; left:-80px;" aria-hidden="true"></div>
@@ -94,7 +94,9 @@
 
                     <div class="relative z-10 text-center">
                         <span class="material-symbols-outlined material-fill text-5xl" style="color:#04060d">verified_user</span>
-                        <div class="nx-eyebrow text-[10px] mt-2" style="color:#04060d">TRUTHLENS</div>
+                        <!-- 라벨은 글로우 바깥이라 어두운 색으로는 읽히지 않는다 -->
+                        <div class="nx-eyebrow text-[10px] mt-2"
+                             style="color:#dff6ff; text-shadow:0 1px 6px rgba(4,6,13,0.9)">TRUTHLENS</div>
                     </div>
                 </div>
             </div>

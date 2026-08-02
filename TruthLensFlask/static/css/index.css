@@ -177,6 +177,16 @@ body.nx-dark .bg-surface-container-high    { background-color: rgba(255, 255, 25
 body.nx-dark .bg-surface-container-highest { background-color: rgba(255, 255, 255, 0.1); }
 body.nx-dark .bg-surface-dim               { background-color: rgba(255, 255, 255, 0.04); }
 
+/* 투명도 변형(.bg-white\/80 등)은 별개 클래스라 위 규칙에 걸리지 않는다.
+   빠뜨리면 밝은 패널이 그대로 남아 흰 글자가 안 보인다.
+   .bg-white\/8은 홈 히어로에서 어두운 배경 위에 의도적으로 쓰므로 제외. */
+body.nx-dark .bg-white\/80                       { background-color: rgba(255, 255, 255, 0.05); }
+body.nx-dark .bg-surface\/80                     { background-color: transparent; }
+body.nx-dark .bg-surface-container-low\/50       { background-color: rgba(255, 255, 255, 0.045); }
+body.nx-dark .hover\:bg-surface-container-high\/30:hover { background-color: rgba(255, 255, 255, 0.06); }
+body.nx-dark .hover\:bg-surface-container-high\/50:hover { background-color: rgba(255, 255, 255, 0.08); }
+body.nx-dark .hover\:bg-surface-container-high\/80:hover { background-color: rgba(255, 255, 255, 0.1); }
+
 body.nx-dark .text-deep-navy         { color: #eaf4ff; }
 body.nx-dark .text-on-surface        { color: #dce9f7; }
 body.nx-dark .text-on-surface-variant { color: #8aa4c8; }
