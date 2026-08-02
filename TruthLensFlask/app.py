@@ -10,7 +10,6 @@ from config import Config
 from backend.api.response import fail
 from backend.logging_config import configure_logging
 from backend.models.database import db
-from backend.auth import oauth
 
 _PUBLIC_PREFIXES = ('/login', '/auth/', '/static/')
 
@@ -30,15 +29,6 @@ def create_app(config_overrides=None):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     db.init_app(app)
-
-    oauth.init_app(app)
-    oauth.register(
-        name='google',
-        client_id=app.config.get('GOOGLE_CLIENT_ID'),
-        client_secret=app.config.get('GOOGLE_CLIENT_SECRET'),
-        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        client_kwargs={'scope': 'openid email profile'},
-    )
 
     @app.before_request
     def assign_trace_id():

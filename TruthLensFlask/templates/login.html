@@ -7,8 +7,6 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <!-- Google Identity Services (GIS) SDK -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -181,24 +179,6 @@
             </div>
             {% endif %}
             {% endwith %}
-            <!-- Google Social Login (Prominent & GIS Integrated) -->
-            <div class="w-full flex flex-col items-center justify-center">
-                <!-- Custom mockup button (Shown when client ID is not configured yet for preview) -->
-                <a id="custom-google-btn" href="/auth/google" class="w-full h-14 bg-white border border-outline-variant flex items-center justify-center gap-3 rounded-xl shadow-sm active:scale-[0.98] transition-all hover:bg-surface-container-low">
-                    <svg height="20" viewbox="0 0 48 48" width="20">
-                        <path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"></path>
-                        <path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#4285F4"></path>
-                        <path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05"></path>
-                        <path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"></path>
-                        <path d="M0 0h48v48H0z" fill="none"></path>
-                    </svg>
-                    <span class="font-body-md text-body-md font-semibold text-deep-navy">Google로 계속하기</span>
-                </a>
-                
-                <!-- Official Google GIS Button Container (Will be populated and shown when Client ID is present) -->
-                <div id="official-google-btn" class="w-full flex justify-center hidden"></div>
-            </div>
-            
             <!-- Standard Auth Options -->
             <div id="auth-buttons-container" class="flex flex-col gap-3 transition-all duration-300">
                 <button onclick="toggleEmailForm()" class="w-full h-14 bg-deep-navy text-white flex items-center justify-center rounded-xl font-body-md text-body-md font-semibold active:scale-[0.98] transition-all hover:bg-deep-navy/90">
@@ -299,74 +279,6 @@
     
     <!-- Micro-interaction & Auth Script -->
     <script>
-        // Google OAuth Client ID 설정 (백엔드 .env 파일 등에서 바인딩하여 주입 가능)
-        // 실제 운영 시 아래 값을 본인의 Google Console Client ID로 채워주세요.
-        const GOOGLE_CLIENT_ID = "{{ google_client_id or '' }}"; 
-
-        // Google Identity Services (GIS) 초기화
-        window.onload = function () {
-            if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "None" && GOOGLE_CLIENT_ID !== "") {
-                google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
-                    callback: handleCredentialResponse,
-                    auto_select: false,
-                    cancel_on_tap_outside: true
-                });
-
-                // Google Client ID가 있을 경우 공식 Google GIS 로그인 버튼 렌더링
-                const customBtn = document.getElementById('custom-google-btn');
-                const officialBtn = document.getElementById('official-google-btn');
-                
-                if (customBtn && officialBtn) {
-                    customBtn.classList.add('hidden');
-                    officialBtn.classList.remove('hidden');
-                    
-                    google.accounts.id.renderButton(
-                        officialBtn,
-                        { 
-                            theme: "outline", 
-                            size: "large", 
-                            width: 382, // container max-width에 매핑
-                            text: "signin_with",
-                            shape: "rectangular",
-                            logo_alignment: "left"
-                        }
-                    );
-                }
-                
-                // One Tap 프롬프트 표시 (선택 사항)
-                google.accounts.id.prompt();
-            }
-        };
-
-        // Google 인증 완료 후 콜백 함수 (프론트엔드 SDK 방식)
-        function handleCredentialResponse(response) {
-            console.log("Google Credential Token:", response.credential);
-
-            alert('구글 소셜 로그인 성공! (개발자 콘솔 연동 시 DB에 사용자 정보가 자동 저장됩니다)');
-            window.location.href = "{{ url_for('main.index') }}";
-        }
-
-        // 구글 로그인 버튼 핸들러
-        function handleGoogleLogin() {
-            if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "None" && GOOGLE_CLIENT_ID !== "") {
-                google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        google.accounts.id.requestAccessToken();
-                    }
-                });
-            } else {
-                // Google Client ID가 설정되지 않은 경우 백엔드 리다이렉트 방식 시도 또는 가상 로그인 실행
-                // 백엔드 리다이렉션 예시: window.location.href = "/login/google";
-                
-                const confirmRedirect = confirm('구글 Client ID가 아직 설정되지 않았습니다.\n임시 가상 로그인을 진행할까요?');
-                if (confirmRedirect) {
-                    alert('구글 계정으로 임시 로그인되었습니다!');
-                    window.location.href = "{{ url_for('main.index') }}";
-                }
-            }
-        }
-
         // 모든 폼/버튼 컨테이너 숨기기
         function hideAllForms() {
             document.getElementById('email-login-form').classList.add('hidden');

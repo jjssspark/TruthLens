@@ -75,7 +75,7 @@ python app.py                     # http://localhost:3000
 ```
 
 - 최초 실행 시 SQLite(`dev.db`)에 테이블이 자동 생성됩니다.
-- `/auth/email/signup`으로 이메일 회원가입 후 로그인하면 전체 기능을 체험할 수 있습니다 (Google 로그인은 `GOOGLE_CLIENT_ID`/`SECRET` 설정 시에만 동작).
+- `/auth/email/signup`으로 이메일 회원가입 후 로그인하면 전체 기능을 체험할 수 있습니다. 인증은 이메일/비밀번호 방식만 지원합니다.
 - 이미지 판별(FR-02)은 외부 API 키 없이 바로 동작합니다. 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
 - **영상 판별(FR-01)은 아직 AI 모델이 연동되지 않은 스텁입니다** (`ai_models/video_detector.py`가 항상 score 0.0을 반환). 화면에는 "모델 연동 예정" 배지로 명확히 안내됩니다 — 5일 스코프에서 의도적으로 로드맵으로 남긴 부분입니다.
 
