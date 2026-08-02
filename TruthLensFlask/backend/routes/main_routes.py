@@ -1,15 +1,46 @@
 from flask import Blueprint, render_template
 from flask import session, redirect, url_for
 
+from backend.models.database import db
 from backend.models.detection_request import DetectionRequest
+from backend.models.detection_result import DetectionResult
 
 main_bp = Blueprint('main', __name__)
+
+# 점수가 이 값 이상이면 AI 생성으로 본다 (image_detector._make_summary와 같은 기준)
+AI_SCORE_THRESHOLD = 70
 
 
 @main_bp.route('/', methods=['GET'])
 def index():
-    """메인(홈) 화면: 서비스 소개, 판별 유형 선택"""
-    return render_template('index.html')
+    """메인(홈) 화면: 서비스 소개, 판별 유형 선택, 내 최근 분석 이력"""
+    user_id = session.get('user_id')
+
+    recent = (
+        db.session.query(DetectionRequest, DetectionResult)
+        .outerjoin(DetectionResult, DetectionResult.request_id == DetectionRequest.id)
+        .filter(DetectionRequest.user_id == user_id)
+        .order_by(DetectionRequest.created_at.desc())
+        .limit(4)
+        .all()
+    )
+
+    ai_detected = (
+        db.session.query(DetectionResult)
+        .join(DetectionRequest, DetectionResult.request_id == DetectionRequest.id)
+        .filter(
+            DetectionRequest.user_id == user_id,
+            DetectionResult.score >= AI_SCORE_THRESHOLD,
+        )
+        .count()
+    )
+
+    return render_template(
+        'index.html',
+        recent=recent,
+        total_scans=DetectionRequest.query.filter_by(user_id=user_id).count(),
+        ai_detected=ai_detected,
+    )
 
 
 @main_bp.route('/history', methods=['GET'])
