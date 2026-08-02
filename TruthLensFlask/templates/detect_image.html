@@ -244,7 +244,22 @@
         previewGrid.parentElement.insertBefore(notice, previewGrid);
     }
 
+    /* 뒤로/앞으로 이동으로 들어온 경우인지 판별한다.
+       새로고침이나 새 방문에서까지 되살리면 "올린 적 없는데 이미지가 있다"가 된다. */
+    function isBackForwardNavigation() {
+        const entry = performance.getEntriesByType('navigation')[0];
+        if (entry) return entry.type === 'back_forward';
+        // 구형 브라우저 폴백
+        return performance.navigation && performance.navigation.type === 2;
+    }
+
     async function restoreSelection() {
+        if (!isBackForwardNavigation()) {
+            // 새로고침·새 방문은 빈 상태로 시작한다
+            sessionStorage.removeItem(STORAGE_KEY);
+            return;
+        }
+
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         try {
