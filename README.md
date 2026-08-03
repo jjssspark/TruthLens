@@ -156,3 +156,13 @@ API 키, DB 접속 정보 등 민감 정보는 코드에 포함하지 않고 클
 
 두 방식이 아직 통일되어 있지 않은 점은 알려진 기술 부채입니다. 추후 뉴스도 Redis 캐시로 통일하면
 캐시 조회 비용을 낮추고 캐싱 정책(TTL, 무효화)을 한 곳에서 관리할 수 있습니다.
+
+## Troubleshooting_요약
+- PaperDetector 생성자 크래시로 API 키 없이는 서버 자체가 부팅되지 않던 버그, 평문 비밀번호 저장 — 둘 다 배포 전에 잡아야 했던 안정성·보안 결함이었습니다.
+- docker compose up이 13일 전 이미지를 재사용해 최신 커밋이 반영되지 않던 인프라 문제를 이미지 생성 시각과 커밋 시각 대조로 추적했습니다.
+- 전체 12건(재현 조건·시도했지만 안 된 것 포함)은 [노션 문서](https://app.notion.com/p/3b1f6f1e619a80ef90fce2a31236b1d7?source=copy_link)에 정리했습니다.
+
+## ADR 요약
+- 에러 처리를 라우트마다가 아니라 app.py 전역 계층에서 보장하도록 설계해, 외부 API 장애(502)와 서버 버그(500)를 구분했습니다.
+- 업로드 파일명을 sanitize 없이 그대로 써서 발생하던 path traversal 취약점을 secure_filename + uuid 접두어로 제거했습니다.
+- 전체 결정 과정(고려한 대안, 근거, 실제 결과)은 [노션 ADR 문서](https://app.notion.com/p/ADR-3b1f6f1e619a80a69c60eadc60db4df0?source=copy_link)에 정리했습니다.
