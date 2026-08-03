@@ -6,6 +6,9 @@ AI 생성 콘텐츠 판별 서비스 (Product Requirements Document 기반)
 
 ![TruthLens 데모 — 이미지 업로드부터 AI 생성 판별 결과까지](docs/assets/truthlens-demo.gif)
 
+**라이브 데모**: https://port-0-truthlens-mscko82687e05bd3.sel3.cloudtype.app
+(무료 티어 컨테이너로, 재시작 시 가입 계정·업로드 데이터가 초기화될 수 있습니다. 이미지 판별은 API 키 없이 바로 체험 가능합니다.)
+
 ## 1. 프로젝트 개요
 
 TruthLens는 생성형 AI 기술의 급속한 발전으로 인해 범람하는 AI 생성 영상·이미지·텍스트(뉴스·논문)에 대해
