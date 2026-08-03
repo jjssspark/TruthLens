@@ -44,6 +44,9 @@ class KoreanFontUnavailable(RuntimeError):
 class PDFService:
     """분석 결과 리포트를 PDF 형식으로 생성하는 서비스 클래스 (한글 대응 포함)"""
 
+    FONT_NAME = 'NanumGothic'
+    FONT_BOLD_NAME = 'NanumGothic-Bold'
+
     def __init__(self):
         # Flask 어플리케이션 루트 경로의 cache 폴더를 폰트 다운로드 저장소로 사용
         self.cache_dir = os.path.join(current_app.root_path, "cache")
@@ -68,8 +71,8 @@ class PDFService:
             )
 
         try:
-            pdfmetrics.registerFont(self._make_font('NanumGothic', regular, subfont_index))
-            pdfmetrics.registerFont(self._make_font('NanumGothic-Bold', bold or regular, subfont_index))
+            pdfmetrics.registerFont(self._make_font(self.FONT_NAME, regular, subfont_index))
+            pdfmetrics.registerFont(self._make_font(self.FONT_BOLD_NAME, bold or regular, subfont_index))
         except Exception as e:
             logger.exception("한글 폰트 등록 실패", extra={"event": "pdf.font.register_failed"})
             raise KoreanFontUnavailable(f"한글 폰트를 등록하지 못했습니다: {e}") from e
@@ -143,8 +146,8 @@ class PDFService:
         
         # 폰트 활성화 여부에 따른 동적 폰트명 바인딩
         registered_fonts = pdfmetrics.getRegisteredFontNames()
-        regular_font_name = 'NanumGothic' if 'NanumGothic' in registered_fonts else 'Helvetica'
-        bold_font_name = 'NanumGothic-Bold' if 'NanumGothic-Bold' in registered_fonts else 'Helvetica-Bold'
+        regular_font_name = self.FONT_NAME if self.FONT_NAME in registered_fonts else 'Helvetica'
+        bold_font_name = self.FONT_BOLD_NAME if self.FONT_BOLD_NAME in registered_fonts else 'Helvetica-Bold'
 
         # 레이아웃 타이포그래피 스타일 정의
         title_style = ParagraphStyle(

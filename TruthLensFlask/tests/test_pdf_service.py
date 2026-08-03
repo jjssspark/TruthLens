@@ -6,6 +6,22 @@ from backend.services import pdf_service
 from backend.services.pdf_service import KoreanFontUnavailable, PDFService
 
 
+@pytest.fixture(autouse=True)
+def _clear_font_cache(app):
+    """PDFService가 앱 루트의 cache/에 받아두는 폰트 파일을 매 테스트 전에 지운다.
+
+    캐시가 남아 있으면 _locate_fonts()가 1순위로 그 캐시를 재사용해, 이후
+    테스트가 시스템 폰트/다운로드 monkeypatch를 타지 않고 이전 테스트가
+    받아둔 파일을 그대로 쓰게 되어 실행 순서에 따라 결과가 달라졌다.
+    """
+    cache_dir = os.path.join(app.root_path, "cache")
+    for name in ("NanumGothic-Regular.ttf", "NanumGothic-Bold.ttf"):
+        path = os.path.join(cache_dir, name)
+        if os.path.exists(path):
+            os.remove(path)
+    yield
+
+
 def test_resolves_a_font_file_that_exists(app):
     """폰트 확보에 성공하면 실제 존재하는 파일 경로를 갖는다"""
     with app.test_request_context():
@@ -66,7 +82,8 @@ def test_report_embeds_the_korean_font(app):
         pdf = service.generate_report_pdf(request, result)
 
     raw = pdf if isinstance(pdf, bytes) else pdf.read()
-    font_name = os.path.splitext(os.path.basename(service.font_path))[0].encode()
 
     assert raw.startswith(b'%PDF')
-    assert font_name in raw
+    # PDF는 파일명이 아니라 pdfmetrics에 등록한 폰트 이름으로 폰트를 참조한다
+    # (font_path의 basename과는 다른 문자열이라 이걸로 검사해야 한다).
+    assert PDFService.FONT_NAME.encode() in raw
