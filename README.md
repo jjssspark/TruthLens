@@ -4,6 +4,8 @@
 
 AI 생성 콘텐츠 판별 서비스 (Product Requirements Document 기반)
 
+![TruthLens 데모 — 이미지 업로드부터 AI 생성 판별 결과까지](docs/assets/truthlens-demo.gif)
+
 ## 1. 프로젝트 개요
 
 TruthLens는 생성형 AI 기술의 급속한 발전으로 인해 범람하는 AI 생성 영상·이미지·텍스트(뉴스·논문)에 대해

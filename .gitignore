@@ -25,6 +25,9 @@ instance/
 **/uploads/*
 !**/uploads/.gitkeep
 
+# 원본 데모 영상 (용량이 커서 GitHub에 올리지 않음 — Notion/개인 웹사이트에만 사용, README용 GIF만 커밋)
+docs/assets/video/
+
 # 에디터 · OS
 .DS_Store
 .vscode/
