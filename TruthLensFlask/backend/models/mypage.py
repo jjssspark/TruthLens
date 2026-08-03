@@ -9,7 +9,6 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     email = db.Column(db.String(255), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=True)
-    google_sub    = db.Column(db.String(100), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(30), nullable=False, default='free')          # 'pro', 'enterprise' 등
     trust_score = db.Column(db.Float, nullable=False, default=0)            # 신뢰 수준 데이터

@@ -75,3 +75,471 @@ body {
 .material-fill {
   font-variation-settings: 'FILL' 1;
 }
+
+/* ============================================================
+   사이트 전역 다크 테마
+   템플릿을 일일이 고치는 대신 body.nx-dark 스코프에서 Tailwind
+   표면 유틸리티를 덮어쓴다. 특이도 (0,2,1) > (0,1,0)이라 !important 불필요.
+   되돌리려면 base.html의 body에서 nx-dark만 빼면 된다.
+   ============================================================ */
+
+body.nx-dark {
+  background-color: #04060d;
+  color: #dce9f7;
+}
+
+/* --- 고정 배경 레이어 --- */
+.nx-site-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 60% at 12% -12%, rgba(34, 211, 238, 0.13), transparent 58%),
+    radial-gradient(80% 55% at 92% 4%, rgba(59, 130, 246, 0.15), transparent 60%),
+    radial-gradient(70% 50% at 50% 108%, rgba(99, 102, 241, 0.12), transparent 62%),
+    linear-gradient(180deg, #070d1c 0%, #04060d 52%, #05080f 100%);
+}
+
+/* 회로 격자 */
+.nx-site-bg::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(115% 85% at 50% 12%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(115% 85% at 50% 12%, #000 30%, transparent 80%);
+  transform: translate3d(0, calc(var(--nx-scroll, 0) * -22px), 0);
+}
+
+/* 상단 비네트 */
+.nx-site-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 70% at 50% 0%, transparent 45%, rgba(2, 4, 10, 0.85) 100%);
+}
+
+.nx-site-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.4;
+  will-change: transform;
+}
+.nx-site-orb--a {
+  top: -12%; left: -8%;
+  width: 44vw; height: 44vw; max-width: 620px; max-height: 620px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.85), transparent 70%);
+  animation: nx-drift-a 26s ease-in-out infinite;
+  transform: translate3d(0, calc(var(--nx-scroll, 0) * 60px), 0);
+}
+.nx-site-orb--b {
+  top: 34%; right: -12%;
+  width: 40vw; height: 40vw; max-width: 560px; max-height: 560px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.8), transparent 70%);
+  animation: nx-drift-b 31s ease-in-out infinite;
+  transform: translate3d(0, calc(var(--nx-scroll, 0) * -80px), 0);
+}
+.nx-site-orb--c {
+  bottom: -14%; left: 28%;
+  width: 36vw; height: 36vw; max-width: 500px; max-height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.7), transparent 70%);
+  animation: nx-drift-a 37s ease-in-out infinite reverse;
+  transform: translate3d(0, calc(var(--nx-scroll, 0) * -40px), 0);
+}
+
+/* --- 상단바 · 푸터 --- */
+.nx-topbar {
+  background: rgba(4, 8, 18, 0.72);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(148, 197, 255, 0.14);
+}
+.nx-footer {
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(148, 197, 255, 0.12);
+}
+
+/* --- 표면 유틸리티 재정의 --- */
+body.nx-dark .bg-white,
+body.nx-dark .bg-surface-container-lowest {
+  background-color: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(10px);
+}
+body.nx-dark .bg-surface              { background-color: transparent; }
+body.nx-dark .bg-surface-container-low     { background-color: rgba(255, 255, 255, 0.05); }
+body.nx-dark .bg-surface-container         { background-color: rgba(255, 255, 255, 0.065); }
+body.nx-dark .bg-surface-container-high    { background-color: rgba(255, 255, 255, 0.085); }
+body.nx-dark .bg-surface-container-highest { background-color: rgba(255, 255, 255, 0.1); }
+body.nx-dark .bg-surface-dim               { background-color: rgba(255, 255, 255, 0.04); }
+
+/* 투명도 변형(.bg-white\/80 등)은 별개 클래스라 위 규칙에 걸리지 않는다.
+   빠뜨리면 밝은 패널이 그대로 남아 흰 글자가 안 보인다.
+   .bg-white\/8은 홈 히어로에서 어두운 배경 위에 의도적으로 쓰므로 제외. */
+body.nx-dark .bg-white\/80                       { background-color: rgba(255, 255, 255, 0.05); }
+body.nx-dark .bg-surface\/80                     { background-color: transparent; }
+body.nx-dark .bg-surface-container-low\/50       { background-color: rgba(255, 255, 255, 0.045); }
+body.nx-dark .hover\:bg-surface-container-high\/30:hover { background-color: rgba(255, 255, 255, 0.06); }
+body.nx-dark .hover\:bg-surface-container-high\/50:hover { background-color: rgba(255, 255, 255, 0.08); }
+body.nx-dark .hover\:bg-surface-container-high\/80:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+body.nx-dark .text-deep-navy         { color: #eaf4ff; }
+body.nx-dark .text-on-surface        { color: #dce9f7; }
+body.nx-dark .text-on-surface-variant { color: #8aa4c8; }
+body.nx-dark .text-primary           { color: #22d3ee; }
+/* /40 투명도는 다크 배경에서 대비가 1.8:1까지 떨어져 읽히지 않는다 */
+body.nx-dark .text-on-surface-variant\/40 { color: rgba(138, 164, 200, 0.78); }
+
+body.nx-dark .border-outline-variant { border-color: rgba(148, 197, 255, 0.16); }
+body.nx-dark .border-outline         { border-color: rgba(148, 197, 255, 0.24); }
+
+/* 주요 버튼: deep-navy(#1E1F28)는 다크 배경에서 묻힌다.
+   흰 글자 대비 8.6:1인 blue-700으로 올리고 시안 글로우를 얹는다. */
+body.nx-dark .bg-deep-navy {
+  background-color: #1d4ed8;
+  box-shadow: 0 10px 34px -12px rgba(34, 211, 238, 0.6);
+}
+body.nx-dark .hover\:bg-deep-navy\/90:hover { background-color: #2563eb; }
+
+/* 폼 요소 — forms 플러그인 기본값이 밝은 배경을 전제한다 */
+body.nx-dark input,
+body.nx-dark textarea,
+body.nx-dark select {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(148, 197, 255, 0.2);
+  color: #eaf4ff;
+}
+body.nx-dark input:focus,
+body.nx-dark textarea:focus,
+body.nx-dark select:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+  outline-color: rgba(34, 211, 238, 0.6);
+}
+body.nx-dark ::placeholder { color: #6f88ab; opacity: 1; }
+
+/* 점선 업로드 영역의 올리브 스트로크를 시안으로 */
+body.nx-dark .upload-dashed {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%2322d3ee' stroke-opacity='0.45' stroke-width='1.5' stroke-dasharray='8%2c 8' stroke-linecap='square'/%3e%3c/svg%3e");
+}
+
+/* 템플릿 <style> 블록에 직접 정의된 밝은 표면들.
+   .glass-card(result/mypage), .glass-panel(base → 뉴스·영상)
+   모두 rgba(255,255,255,0.8)로 박혀 있어 유틸리티 재정의에 걸리지 않는다.
+   특이도 (0,1,0)이므로 (0,2,1)인 아래 규칙이 이긴다. */
+body.nx-dark .glass-card,
+body.nx-dark .glass-panel {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+  border-color: rgba(148, 197, 255, 0.16);
+}
+
+/* 게이지 미충전 구간이 흰색이라 다크에서 과하게 튄다 */
+body.nx-dark .gauge-bg { stroke: rgba(255, 255, 255, 0.1); }
+
+/* 뉴스·영상 페이지의 활성 탭이 color:#06070f(거의 검정)라 다크에서 안 읽힌다.
+   선택된 탭이 오히려 흐려 보이는 역전이 생긴다. */
+body.nx-dark .active-tab { color: #22d3ee; }
+
+body.nx-dark .grid-bg {
+  background-image: radial-gradient(circle, rgba(34, 211, 238, 0.18) 1.2px, transparent 1.2px);
+}
+
+body.nx-dark .scanning-anim {
+  background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-site-orb,
+  .nx-site-bg::before {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   Neural console — 홈 화면 전용 (nx- 접두어로 격리)
+   레퍼런스: 회로 기판 위 신경망, 딥 네이비 배경 + 시안 글로우
+   ============================================================ */
+
+.nx {
+  --nx-void: #04060d;
+  --nx-deep: #070d1c;
+  --nx-line: rgba(56, 189, 248, 0.14);
+  --nx-cyan: #22d3ee;
+  --nx-blue: #3b82f6;
+  --nx-ink: #e6f6ff;
+  --nx-mute: #8aa4c8;
+}
+
+/* --- 컨테이너: 히어로 + 탐지 스위트를 하나의 어두운 영역으로 --- */
+.nx-console {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 78% 8%, rgba(34, 211, 238, 0.16), transparent 60%),
+    radial-gradient(90% 70% at 10% 100%, rgba(59, 130, 246, 0.14), transparent 62%),
+    linear-gradient(165deg, var(--nx-deep) 0%, var(--nx-void) 60%);
+  color: var(--nx-ink);
+}
+
+/* 회로 기판 격자 */
+.nx-console::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--nx-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nx-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 35%, transparent 78%);
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 35%, transparent 78%);
+  animation: nx-grid-drift 24s linear infinite;
+}
+
+/* 상단 하이라이트 라인 */
+.nx-console::after {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: 0;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.75), transparent);
+}
+
+.nx-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.85;
+}
+
+/* --- 떠다니는 광원 --- */
+.nx-orb {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.nx-orb--cyan {
+  width: 340px; height: 340px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.9), transparent 70%);
+  animation: nx-drift-a 19s ease-in-out infinite;
+}
+.nx-orb--blue {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.85), transparent 70%);
+  animation: nx-drift-b 23s ease-in-out infinite;
+}
+
+/* --- 타이포 --- */
+.nx-eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--nx-cyan);
+}
+
+.nx-title {
+  background: linear-gradient(100deg, #ffffff 12%, var(--nx-cyan) 48%, #a5b4fc 88%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: nx-sheen 9s ease-in-out infinite;
+}
+
+/* --- 등장 모션 --- */
+.nx-rise {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.nx-rise.nx-in {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--nx-delay, 0ms);
+}
+
+/* --- 신경 코어 비주얼 --- */
+.nx-core { position: relative; display: grid; place-items: center; }
+
+.nx-ring {
+  position: absolute;
+  border-radius: 9999px;
+  border: 1px dashed rgba(34, 211, 238, 0.42);
+  will-change: transform;
+}
+.nx-ring--outer { inset: 0;    animation: nx-spin 26s linear infinite; }
+.nx-ring--mid   { inset: 14%;  border-style: solid; border-color: rgba(59, 130, 246, 0.32);
+                  animation: nx-spin 18s linear infinite reverse; }
+.nx-ring--inner { inset: 28%;  border-color: rgba(34, 211, 238, 0.28);
+                  animation: nx-spin 12s linear infinite; }
+
+.nx-core-glow {
+  position: absolute;
+  inset: 36%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.95) 0%, rgba(59, 130, 246, 0.45) 45%, transparent 72%);
+  filter: blur(6px);
+  animation: nx-breathe 3.6s ease-in-out infinite;
+}
+
+/* 궤도 노드 — 부모가 회전하고 점은 그 끝에 매달린다 */
+.nx-orbit {
+  position: absolute;
+  inset: 0;
+  animation: nx-spin 14s linear infinite;
+  will-change: transform;
+}
+.nx-orbit span {
+  position: absolute;
+  top: -4px; left: 50%;
+  width: 8px; height: 8px;
+  margin-left: -4px;
+  border-radius: 9999px;
+  background: var(--nx-cyan);
+  box-shadow: 0 0 12px 2px rgba(34, 211, 238, 0.9);
+}
+.nx-orbit:nth-child(2) { animation-duration: 20s; animation-direction: reverse; }
+.nx-orbit:nth-child(3) { animation-duration: 27s; }
+
+/* 스캔 라인 */
+.nx-scan {
+  position: absolute;
+  inset-inline: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--nx-cyan), transparent);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.85);
+  animation: nx-scan 4.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+/* --- 카드 --- */
+.nx-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 197, 255, 0.16);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(8px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s ease,
+              box-shadow 0.35s ease;
+}
+.nx-card:hover,
+.nx-card:focus-visible {
+  transform: translateY(-6px);
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 18px 50px -12px rgba(34, 211, 238, 0.35);
+}
+/* 커서를 따라다니는 하이라이트 (JS가 --mx/--my를 갱신) */
+.nx-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%),
+              rgba(34, 211, 238, 0.16), transparent 65%);
+}
+.nx-card:hover::before { opacity: 1; }
+
+/* 회로 코너 장식 */
+.nx-card::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 56px; height: 56px;
+  border-top: 1px solid rgba(34, 211, 238, 0.5);
+  border-right: 1px solid rgba(34, 211, 238, 0.5);
+  border-top-right-radius: 16px;
+  opacity: 0.5;
+  transition: opacity 0.35s ease;
+}
+.nx-card:hover::after { opacity: 1; }
+
+.nx-chip {
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.nx-pulse-dot {
+  position: relative;
+  width: 8px; height: 8px;
+  border-radius: 9999px;
+  background: #34d399;
+}
+.nx-pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: inherit;
+  animation: nx-ping 1.9s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* --- keyframes --- */
+@keyframes nx-grid-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(56px, 56px, 0); }
+}
+@keyframes nx-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(38px, -30px, 0) scale(1.12); }
+}
+@keyframes nx-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); }
+  50%      { transform: translate3d(-34px, 26px, 0) scale(0.94); }
+}
+@keyframes nx-sheen {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes nx-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes nx-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.14); opacity: 1; }
+}
+@keyframes nx-scan {
+  0%   { transform: translateY(0);     opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(var(--nx-scan-h, 320px)); opacity: 0; }
+}
+@keyframes nx-ping {
+  75%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* --- 모션 최소화 설정 존중 --- */
+@media (prefers-reduced-motion: reduce) {
+  .nx-console::before,
+  .nx-orb,
+  .nx-title,
+  .nx-ring,
+  .nx-orbit,
+  .nx-core-glow,
+  .nx-scan,
+  .nx-pulse-dot::after {
+    animation: none !important;
+  }
+  .nx-scan { opacity: 0.5; }
+  .nx-rise { opacity: 1; transform: none; }
+  .nx-card { transition: none; }
+  .nx-card:hover { transform: none; }
+}

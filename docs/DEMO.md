@@ -6,7 +6,8 @@
 
 ```bash
 cd TruthLensFlask
-docker compose up          # 또는: source venv/bin/activate && python app.py
+docker compose up --build  # 코드 수정 후엔 반드시 --build (이미지가 있으면 재빌드 안 됨)
+# 또는: source venv/bin/activate && python app.py
 ```
 
 브라우저에서 http://localhost:3000 접속 → `/auth/email/signup`에서 이메일 회원가입(비밀번호만 있으면 됨) → 자동 로그인.

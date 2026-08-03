@@ -1,12 +1,13 @@
-import os
+from flask import Blueprint, current_app, render_template, request
 
-from flask import Blueprint, current_app, jsonify, render_template, request
-
+from backend.api.response import fail, ok
 from backend.services.image_service import ImageService
+from backend.services.upload_service import UnsupportedFileType, save_upload
 
 image_bp = Blueprint('image', __name__)
 
 MAX_IMAGES = 10
+ALLOWED_IMAGE_EXT = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 
 
 @image_bp.route('/detect/image', methods=['GET'])
@@ -20,18 +21,16 @@ def detect_image_api():
     """이미지 AI 판별 요청: 다중 업로드 지원 (최대 10장, FR-02)"""
     files = request.files.getlist('file')
     if not files:
-        return jsonify({"status": "error", "data": {"message": "file이 필요합니다."}}), 400
+        return fail("FILE_REQUIRED", "file이 필요합니다.", 400)
 
-    save_paths = []
-    for file in files[:MAX_IMAGES]:
-        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(save_path)
-        save_paths.append(save_path)
+    try:
+        save_paths = [
+            save_upload(file, ALLOWED_IMAGE_EXT, current_app.config['UPLOAD_FOLDER'])
+            for file in files[:MAX_IMAGES]
+        ]
+    except UnsupportedFileType as e:
+        return fail("FILE_TYPE_UNSUPPORTED", str(e), 400)
 
     results = ImageService().analyze_multiple(save_paths)
 
-    return jsonify({
-        "status": "success",
-        "data": {"request_ids": [r.id for r in results]},
-        "meta": {},
-    })
+    return ok({"request_ids": [r.id for r in results]})

@@ -5,12 +5,14 @@ from backend.models.database import db
 
 
 @pytest.fixture
-def app():
+def app(tmp_path_factory):
     flask_app = create_app(config_overrides={
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "GOOGLE_CLIENT_ID": "test-client-id",
-        "GOOGLE_CLIENT_SECRET": "test-client-secret",
+        # 테스트가 실제 uploads/를 오염시키지 않도록 격리
+        "UPLOAD_FOLDER": str(tmp_path_factory.mktemp("uploads")),
+        # TESTING=True면 예외가 재발생해 errorhandler가 동작하지 않는다
+        "PROPAGATE_EXCEPTIONS": False,
     })
 
     with flask_app.app_context():
@@ -30,7 +32,7 @@ def logged_in_client(app, client):
     from backend.models.mypage import User
 
     with app.app_context():
-        user = User(id=1, email='test@example.com', name='Test User', google_sub='test_sub')
+        user = User(id=1, email='test@example.com', name='Test User')
         db.session.add(user)
         db.session.commit()
 

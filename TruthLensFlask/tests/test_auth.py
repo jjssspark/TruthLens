@@ -1,22 +1,7 @@
-from unittest.mock import patch
-
 from werkzeug.security import generate_password_hash
 
 from backend.models.database import db
 from backend.models.mypage import User
-
-
-def test_user_can_be_created_without_password(app):
-    """Google OAuth 유저는 password_hash 없이 생성 가능해야 한다"""
-    with app.app_context():
-        user = User(email='google@example.com', name='Google User', google_sub='google_sub_123')
-        db.session.add(user)
-        db.session.commit()
-
-        saved = User.query.filter_by(email='google@example.com').first()
-        assert saved is not None
-        assert saved.google_sub == 'google_sub_123'
-        assert saved.password_hash is None
 
 
 def test_unauthenticated_request_redirects_to_login(client):
@@ -32,39 +17,28 @@ def test_login_page_accessible_without_auth(client):
     assert response.status_code == 200
 
 
-def test_google_callback_creates_new_user(app, client):
-    """Google 콜백 시 신규 유저가 DB에 저장되어야 한다"""
-    fake_userinfo = {
-        'sub': 'google_sub_new',
-        'email': 'newuser@gmail.com',
-        'name': 'New User',
-    }
-    with patch('backend.auth.routes.oauth.google.authorize_access_token',
-               return_value={'userinfo': fake_userinfo}):
-        client.get('/auth/google/callback')
-
+def test_email_login_updates_last_login_at(app, client):
+    """로그인 성공 시 last_login_at이 갱신된다"""
     with app.app_context():
-        user = User.query.filter_by(email='newuser@gmail.com').first()
-        assert user is not None
-        assert user.google_sub == 'google_sub_new'
-        assert user.name == 'New User'
-
-
-def test_google_callback_updates_last_login_for_existing_user(app, client):
-    """이미 가입된 유저는 last_login_at이 갱신되어야 한다"""
-    with app.app_context():
-        user = User(email='existing@gmail.com', name='Existing', google_sub='sub_existing')
+        user = User(email='lastlogin@test.com', name='유저',
+                    password_hash=generate_password_hash('pw12345'))
         db.session.add(user)
         db.session.commit()
+        assert user.last_login_at is None
 
-    fake_userinfo = {'sub': 'sub_existing', 'email': 'existing@gmail.com', 'name': 'Existing'}
-    with patch('backend.auth.routes.oauth.google.authorize_access_token',
-               return_value={'userinfo': fake_userinfo}):
-        client.get('/auth/google/callback')
+    client.post('/auth/email/login', data={
+        'email': 'lastlogin@test.com',
+        'password': 'pw12345',
+    })
 
     with app.app_context():
-        user = User.query.filter_by(email='existing@gmail.com').first()
-        assert user.last_login_at is not None
+        assert User.query.filter_by(email='lastlogin@test.com').first().last_login_at is not None
+
+
+def test_google_login_route_is_gone(client):
+    """구글 OAuth 라우트가 완전히 제거되었다"""
+    assert client.get('/auth/google').status_code == 404
+    assert client.get('/auth/google/callback').status_code == 404
 
 
 def test_logout_clears_session(client):

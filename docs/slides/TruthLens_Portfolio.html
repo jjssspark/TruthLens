@@ -457,7 +457,7 @@
   <!-- 05 TROUBLESHOOTING -->
   <section class="slide" id="s05">
     <div class="slide-head"><span class="slide-num">05 / 09</span><span class="eyebrow">트러블슈팅 로그</span></div>
-    <h2>증상 → 원인 → 해결, 11건 중 발췌</h2>
+    <h2>증상 → 원인 → 해결, 12건 중 발췌</h2>
     <div style="margin-top:20px;">
       <div class="log-entry">
         <span class="log-day">DAY 1</span>
@@ -495,8 +495,14 @@
           <p><span class="sym">uploads/에 실제 파일이 커밋 이력에 남아있음.</span> git rm --cached로 추적만 해제, 이후 신규 업로드는 정상적으로 무시됨.</p>
         </div>
       </div>
+      <div class="log-entry">
+        <span class="log-day">DAY 5</span>
+        <div class="log-body">
+          <p><span class="sym">docker compose up이 13일 전 이미지를 재사용해 최신 커밋(로그인 방식 변경, 다크 테마)이 반영되지 않음.</span> 이미지 생성 시각과 git 커밋 시각을 대조해 원인 확정, docker compose up --build로 재빌드하고 실행 안내를 갱신.</p>
+        </div>
+      </div>
     </div>
-    <footer class="slide-foot">전체 11건은 docs/TROUBLESHOOTING.md 참고</footer>
+    <footer class="slide-foot">전체 12건은 docs/TROUBLESHOOTING.md 참고</footer>
   </section>
 
   <!-- 06 IMPACT -->

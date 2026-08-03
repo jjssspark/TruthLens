@@ -11,9 +11,9 @@ piexif
 Pillow
 google-generativeai
 pypdf
-Authlib
 openai
 reportlab
 beautifulsoup4
 lxml
 google-auth
+requests

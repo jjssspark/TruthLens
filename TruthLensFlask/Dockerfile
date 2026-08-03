@@ -11,7 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mkdir -p uploads instance
+# cloudtype 등 non-root 런타임에서도 쓰기 가능하도록 권한 개방
+RUN mkdir -p uploads instance && chmod -R 777 uploads instance
 
 EXPOSE 3000
 

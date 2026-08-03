@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -15,6 +16,8 @@ from backend.services.cache_record_service import (
     record_request,
 )
 from cache.redis_client import get_cached_result, set_cached_result
+
+logger = logging.getLogger(__name__)
 
 
 class ImageService:
@@ -53,11 +56,13 @@ class ImageService:
             result = json.loads(cached_json)
             is_cached = True
             record_cache_hit(content_hash)
+            logger.info("이미지 캐시 히트", extra={"event": "image.cache.hit"})
         else:
             # 캐시 미스 → 실제 AI 분석 수행
             result = self.detector.detect(file_path)
             is_cached = False
             record_cache_miss(content_hash)
+            logger.info("이미지 캐시 미스", extra={"event": "image.cache.miss"})
 
         # 분석 시간 기록
         elapsed_time = round(time.time() - start_time, 2)
@@ -79,6 +84,14 @@ class ImageService:
         ))
         detection_request.status = 'done'
         db.session.commit()
+
+        logger.info(
+            "이미지 판별 완료",
+            extra={
+                "event": "image.analyze.completed",
+                "durationMs": round(elapsed_time * 1000),
+            },
+        )
 
         return detection_request
 

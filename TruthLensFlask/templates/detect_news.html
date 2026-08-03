@@ -188,10 +188,10 @@
                 body: formData,
             });
             const json = await res.json();
-            if (res.ok && json.status === 'success' && json.data.request_id) {
+            if (res.ok && json.success && json.data.request_id) {
                 window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
             } else {
-                alert((json.data && json.data.message) || '분석 요청에 실패했습니다.');
+                alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
             }
         } catch (err) {
             alert('분석 요청 중 오류가 발생했습니다.');

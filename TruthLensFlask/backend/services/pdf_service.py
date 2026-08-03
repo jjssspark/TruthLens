@@ -1,6 +1,7 @@
 import os
 import io
 import logging
+import ssl
 import urllib.request
 from flask import current_app
 from reportlab.lib.pagesizes import letter
@@ -14,7 +15,30 @@ from reportlab.pdfbase.ttfonts import TTFont
 FONT_URL = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
 FONT_BOLD_URL = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf"
 
+# 한글 글리프를 가진 시스템 폰트 후보 — (일반, 볼드, TTC 서브폰트 인덱스)
+# 다운로드는 네트워크·SSL·저장소 가용성에 모두 의존하므로 시스템 폰트를 먼저 본다.
+SYSTEM_FONT_CANDIDATES = [
+    # macOS
+    ("/System/Library/Fonts/Supplemental/AppleGothic.ttf", None, None),
+    ("/System/Library/Fonts/AppleSDGothicNeo.ttc", None, 0),
+    # Linux (Debian/Ubuntu 계열)
+    ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+     "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf", None),
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", None, 0),
+    ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", None, 0),
+    # Windows
+    (r"C:\Windows\Fonts\malgun.ttf", r"C:\Windows\Fonts\malgunbd.ttf", None),
+]
+
 logger = logging.getLogger(__name__)
+
+
+class KoreanFontUnavailable(RuntimeError):
+    """한글 폰트를 확보하지 못해 리포트를 만들 수 없는 경우.
+
+    폰트 없이 그냥 생성하면 한글이 전부 네모로 나오는 PDF가 만들어진다.
+    깨진 산출물을 조용히 내보내는 대신 명확히 실패시킨다.
+    """
 
 
 class PDFService:
@@ -29,42 +53,82 @@ class PDFService:
         self._ensure_fonts()
 
     def _ensure_fonts(self):
-        """한글 폰트가 로컬에 캐싱되어 있는지 확인하고 없으면 다운로드하거나 시스템 폰트로 폴백합니다."""
-        # 일반(Regular) 폰트 파일 보장
-        if not os.path.exists(self.font_path):
-            try:
-                logger.info("구글 폰트 저장소에서 NanumGothic-Regular 다운로드 중...")
-                urllib.request.urlretrieve(FONT_URL, self.font_path)
-            except Exception as e:
-                logger.warning("폰트 다운로드 중 오류 발생: %s. Windows 시스템 폰트로 폴백 시도합니다.", e)
-                # Windows 환경 맑은 고딕 폴백 경로 지정
-                win_font = r"C:\Windows\Fonts\malgun.ttf"
-                if os.path.exists(win_font):
-                    self.font_path = win_font
-                else:
-                    logger.warning("Windows 시스템 폰트(malgun.ttf)를 찾을 수 없습니다. 기본 폰트를 사용합니다.")
+        """한글 폰트를 확보해 ReportLab에 등록한다.
 
-        # 볼드(Bold) 폰트 파일 보장
-        if not os.path.exists(self.font_bold_path):
-            try:
-                logger.info("구글 폰트 저장소에서 NanumGothic-Bold 다운로드 중...")
-                urllib.request.urlretrieve(FONT_BOLD_URL, self.font_bold_path)
-            except Exception as e:
-                logger.warning("볼드 폰트 다운로드 중 오류 발생: %s. Windows 시스템 볼드 폰트로 폴백 시도합니다.", e)
-                win_font_bold = r"C:\Windows\Fonts\malgunbd.ttf"
-                if os.path.exists(win_font_bold):
-                    self.font_bold_path = win_font_bold
-                else:
-                    self.font_bold_path = self.font_path  # 볼드 폰트가 없으면 일반 폰트로 대체 적용
+        1) 이전에 받아둔 캐시 → 2) 시스템 설치 폰트 → 3) 다운로드 순으로 시도한다.
+        셋 다 실패하면 KoreanFontUnavailable을 던진다. 폰트 없이 만든 PDF는
+        한글이 전부 네모로 나오므로, 조용히 내보내면 안 된다.
+        """
+        regular, bold, subfont_index = self._locate_fonts()
 
-        # ReportLab 엔진에 한글 폰트 등록
+        if regular is None:
+            raise KoreanFontUnavailable(
+                "한글 폰트를 찾을 수 없습니다. 시스템에 나눔고딕 등 한글 폰트를 설치하거나 "
+                "네트워크 연결을 확인해주세요."
+            )
+
         try:
-            if os.path.exists(self.font_path):
-                pdfmetrics.registerFont(TTFont('NanumGothic', self.font_path))
-            if os.path.exists(self.font_bold_path):
-                pdfmetrics.registerFont(TTFont('NanumGothic-Bold', self.font_bold_path))
+            pdfmetrics.registerFont(self._make_font('NanumGothic', regular, subfont_index))
+            pdfmetrics.registerFont(self._make_font('NanumGothic-Bold', bold or regular, subfont_index))
         except Exception as e:
-            logger.error("ReportLab 한글 폰트 등록에 실패하였습니다 (기본 Helvetica로 대체됩니다): %s", e)
+            logger.exception("한글 폰트 등록 실패", extra={"event": "pdf.font.register_failed"})
+            raise KoreanFontUnavailable(f"한글 폰트를 등록하지 못했습니다: {e}") from e
+
+        self.font_path, self.font_bold_path = regular, bold or regular
+
+    @staticmethod
+    def _make_font(name, path, subfont_index):
+        """TTC(폰트 모음)는 서브폰트 인덱스를 함께 넘겨야 로드된다."""
+        if subfont_index is not None:
+            return TTFont(name, path, subfontIndex=subfont_index)
+        return TTFont(name, path)
+
+    def _locate_fonts(self):
+        """(일반 경로, 볼드 경로, TTC 인덱스)를 반환한다. 못 찾으면 (None, None, None)."""
+        # 1) 이전에 받아둔 캐시
+        if os.path.exists(self.font_path):
+            bold = self.font_bold_path if os.path.exists(self.font_bold_path) else None
+            return self.font_path, bold, None
+
+        # 2) 시스템 설치 폰트
+        for regular, bold, subfont_index in SYSTEM_FONT_CANDIDATES:
+            if os.path.exists(regular):
+                logger.info("시스템 한글 폰트 사용: %s", regular,
+                            extra={"event": "pdf.font.system"})
+                return regular, (bold if bold and os.path.exists(bold) else None), subfont_index
+
+        # 3) 다운로드 (네트워크·SSL에 의존하므로 마지막)
+        if self._download_fonts():
+            bold = self.font_bold_path if os.path.exists(self.font_bold_path) else None
+            return self.font_path, bold, None
+
+        return None, None, None
+
+    def _download_fonts(self):
+        """구글 폰트 저장소에서 나눔고딕을 내려받는다. 성공 여부를 반환."""
+        context = None
+        try:
+            import certifi
+            context = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            # certifi가 없으면 시스템 기본 인증서를 쓴다
+            context = ssl.create_default_context()
+
+        for url, path in ((FONT_URL, self.font_path), (FONT_BOLD_URL, self.font_bold_path)):
+            try:
+                with urllib.request.urlopen(url, context=context, timeout=10) as response:
+                    data = response.read()
+                if not data:
+                    raise ValueError("빈 응답")
+                with open(path, 'wb') as f:
+                    f.write(data)
+            except Exception as e:
+                logger.warning("한글 폰트 다운로드 실패 (%s): %s", url, e,
+                               extra={"event": "pdf.font.download_failed"})
+                if path == self.font_path:
+                    return False   # 일반 폰트가 없으면 볼드만 받아도 의미 없다
+
+        return os.path.exists(self.font_path)
 
     def generate_report_pdf(self, request, result):
         """요청 및 결과 데이터를 조합하여 세련된 디자인의 PDF 보고서 바이너리를 생성합니다."""

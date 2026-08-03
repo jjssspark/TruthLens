@@ -23,6 +23,7 @@ def test_get_citations_for_unknown_request_returns_empty_list(logged_in_client):
     response = logged_in_client.get('/api/v1/paper/999/citations')
     assert response.status_code == 200
     assert response.get_json()["data"]["citations"] == []
+    assert response.get_json()["success"] is True
 
 
 def test_analyze_paper_caches_result_on_cache_miss(app, tmp_path):
