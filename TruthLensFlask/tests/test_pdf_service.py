@@ -35,7 +35,17 @@ def test_prefers_system_font_over_download(app, monkeypatch):
 
     다운로드는 SSL·네트워크·저장소 가용성에 모두 의존해 실패하기 쉽다.
     실제로 이 경로가 조용히 실패해 한글이 전부 네모로 나온 적이 있다.
+
+    CI(ubuntu-latest)에는 나눔고딕 등 한글 폰트가 설치돼 있지 않아
+    SYSTEM_FONT_CANDIDATES가 실제로는 항상 비어있는 것처럼 동작한다.
+    "시스템 폰트가 있을 때"를 검증하려면 실제 존재를 보장할 수 있는
+    폰트가 필요해, reportlab이 자체 내장한 Vera.ttf를 후보로 주입한다
+    (한글 글리프는 없지만 이 테스트는 파일 탐색 우선순위만 검증한다).
     """
+    import reportlab
+    vera_path = os.path.join(os.path.dirname(reportlab.__file__), "fonts", "Vera.ttf")
+    monkeypatch.setattr(pdf_service, 'SYSTEM_FONT_CANDIDATES', [(vera_path, None, None)])
+
     def _fail(self):
         raise AssertionError("시스템 폰트가 있는데 다운로드를 시도했다")
 
@@ -44,7 +54,7 @@ def test_prefers_system_font_over_download(app, monkeypatch):
     with app.test_request_context():
         service = PDFService()
 
-    assert os.path.exists(service.font_path)
+    assert service.font_path == vera_path
 
 
 def test_raises_when_no_korean_font_is_available(app, monkeypatch):
