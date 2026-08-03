@@ -65,3 +65,10 @@
 - **증상**: `datetime.utcnow()` 사용 시 `DeprecationWarning` 다수 발생.
 - **원인**: Python 3.12+에서 `datetime.utcnow()`가 deprecated. 대체품인 `datetime.now(timezone.utc)`는 aware datetime이라 DB의 naive `DATETIME` 컬럼과 그대로 섞으면 저장/비교 시 타입 불일치가 날 수 있음.
 - **해결**: `backend/models/database.py`에 `datetime.now(timezone.utc).replace(tzinfo=None)`을 반환하는 `utcnow()` 헬퍼를 추가해 기존 naive UTC 동작을 그대로 유지하며 교체. SQLAlchemy 컬럼 default는 호출이 아닌 함수 참조를 받는다는 기존 패턴(`default=datetime.utcnow` → `default=utcnow`)도 그대로 보존.
+
+## Day 5 — 배포·실행 환경 정리
+
+### 12. `docker compose up`이 13일 전 이미지를 재사용해 최신 커밋이 반영되지 않음
+- **증상**: 전날 커밋한 UI 변경(로그인 방식 변경, 다크 테마 전환)이 로컬 실행 화면에 전혀 반영되지 않음.
+- **원인**: `docker-compose.yml`의 `app` 서비스가 소스를 볼륨 마운트하지 않고 `Dockerfile`의 `COPY . .`로 빌드 시점 코드를 이미지에 굽는 구조. `docker compose up`은 이미지가 로컬에 이미 존재하면 재빌드하지 않는데, 로컬 이미지가 13일 전 빌드본이었음(`docker images` 생성 시각과 `git log` 커밋 시각을 대조해 확인).
+- **해결**: `docker compose up --build`로 재빌드. `docs/DEMO.md`의 실행 안내를 `--build` 포함 명령으로 갱신해 재발을 막음.
