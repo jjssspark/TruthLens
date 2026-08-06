@@ -627,9 +627,9 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   </div>
   <div class="stats" role="list" aria-label="핵심 지표">
     <div class="stat"><span class="num">2,892</span><span class="label">Python 소스 라인 (backend · ai_models · tasks)</span></div>
-    <div class="stat"><span class="num">135</span><span class="label">테스트 케이스 · 1,834 라인</span></div>
+    <div class="stat"><span class="num">135</span><span class="label">테스트 케이스 · 1,836 라인</span></div>
     <div class="stat"><span class="num">80%</span><span class="label">테스트 커버리지 (backend + ai_models)</span></div>
-    <div class="stat"><span class="num">12</span><span class="label">원인까지 적어둔 버그</span></div>
+    <div class="stat"><span class="num">13</span><span class="label">원인까지 적어둔 버그</span></div>
   </div>
 </section>
 
@@ -792,7 +792,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
         <li>piexif로 카메라·촬영일·소프트웨어를 꺼내고, EXIF가 아예 없으면 의심 표시</li>
         <li>의심 영역 히트맵을 base64로 만들어서 응답에 같이 실어보냄</li>
       </ul>
-      <p class="note" style="margin-top:10px;">API 키 없이 혼자 돌아가는 유일한 판별기임</p>
+      <p class="note" style="margin-top:10px;">외부 API를 아예 안 부름. 키가 있든 없든 로컬 계산만 씀</p>
     </div>
     <div class="card">
       <span class="stamp cyan">FR-01 영상</span>
@@ -929,7 +929,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
       <p><span class="sym">320px 화면에서 결과 게이지가 카드 밖으로 삐져나갈 조건이었음.</span> <span class="fix">→</span> 페이지 패딩 + 카드 패딩 + 고정폭을 직접 더해보고 넘치는 걸 확인한 뒤 <code>width: min(280px, 100%)</code>로 고침.</p>
     </div>
   </div>
-  <p class="foot">전체 12건은 docs/TROUBLESHOOTING.md에 있음 — 어떻게 재현했는지, 뭘 해봤다가 안 됐는지까지 같이 적어둠</p>
+  <p class="foot">전체 13건은 docs/TROUBLESHOOTING.md에 있음 — 어떻게 재현했는지, 뭘 해봤다가 안 됐는지까지 같이 적어둠</p>
 </section>
 
 <!-- ============ 07 지표 ============ -->
@@ -961,13 +961,13 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     <div class="card">
       <h3>왜 그랬는지 남겨둠</h3>
       <p>
-        코드만 봐서는 알 수 없는 판단들이 있어서, 버그 12건을 증상·원인·해결로 적고
+        코드만 봐서는 알 수 없는 판단들이 있어서, 버그 13건을 증상·원인·해결로 적고
         주요 설계 결정은 ADR로 따로 정리해둠.
       </p>
     </div>
   </div>
   <p class="foot">
-    커버리지랑 테스트 수는 <span class="mono">pytest --cov</span> 돌려서 나온 값 · 코드량: 소스 2,892 / 테스트 1,834 / 템플릿·JS·CSS 3,151 라인
+    커버리지랑 테스트 수는 <span class="mono">pytest --cov</span> 돌려서 나온 값 · 코드량: 소스 2,892 / 테스트 1,836 / 템플릿·JS·CSS 3,151 라인
   </p>
 </section>
 
