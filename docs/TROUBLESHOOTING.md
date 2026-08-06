@@ -62,3 +62,11 @@
 - 증상: 전날 커밋한 UI 변경(로그인 방식 변경, 다크 테마 전환)이 로컬 실행 화면에 전혀 반영되지 않음.
 - 원인: `docker-compose.yml`의 `app` 서비스가 소스를 볼륨 마운트하지 않고 `Dockerfile`의 `COPY . .`로 빌드 시점 코드를 이미지에 굽는 구조. `docker compose up`은 이미지가 로컬에 이미 존재하면 재빌드하지 않는데, 로컬 이미지가 13일 전 빌드본이었음(`docker images` 생성 시각과 `git log` 커밋 시각을 대조해 확인).
 - 해결: `docker compose up --build`로 재빌드. `docs/DEMO.md`의 실행 안내를 `--build` 포함 명령으로 갱신해 재발을 막음.
+
+### 13. PDF 한글 폰트 테스트가 macOS에서만 실패
+- 증상: CI(Linux)와 GitHub Actions는 통과하는데 로컬 macOS에서만 `test_report_embeds_the_korean_font`가 실패. `assert b'NanumGothic' in raw`에서 어긋남.
+- 원인(표면): 어설션이 `PDFService.FONT_NAME`('NanumGothic')이 PDF 바이트에 있는지를 검사함.
+- 원인(근본): 어설션 위 주석은 "pdfmetrics에 등록한 폰트 이름으로 참조하므로 이걸로 검사해야 한다"고 적혀 있었으나, 실제로 PDF에 박히는 문자열은 **임베드된 폰트 파일의 내부 PostScript 이름**이다. `_locate_fonts()`는 시스템 폰트를 우선하므로 macOS에서는 `/System/Library/Fonts/Supplemental/AppleGothic.ttf`가 잡히고, 등록명은 'NanumGothic'이어도 PDF에는 'AppleGothic'이 남는다. CI에서는 나눔고딕이 잡혀 두 이름이 우연히 일치해 통과했던 것.
+- 시도했지만 안 된 방향: 처음엔 폰트 캐시나 다운로드 폴백 문제로 의심했으나, 로그(`{"event": "pdf.font.system", "message": "시스템 한글 폰트 사용: .../AppleGothic.ttf"}`)에서 폰트 확보 자체는 정상임을 확인해 방향을 바꿈.
+- 해결: 환경마다 달라지는 폰트 패밀리 이름 대신 불변식으로 검사하도록 변경. 표준 14종(Helvetica 등)은 절대 임베드되지 않으므로 `assert b'/FontFile2' in raw`로 "TrueType 폰트가 실제로 PDF에 박혔는지"를 확인한다. 이게 없으면 한글이 네모로 나오므로 원래 지키려던 의도와 동일하다.
+- 검증: macOS 로컬 `pytest -q` 135건 전부 통과.

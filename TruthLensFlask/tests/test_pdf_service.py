@@ -94,6 +94,8 @@ def test_report_embeds_the_korean_font(app):
     raw = pdf if isinstance(pdf, bytes) else pdf.read()
 
     assert raw.startswith(b'%PDF')
-    # PDF는 파일명이 아니라 pdfmetrics에 등록한 폰트 이름으로 폰트를 참조한다
-    # (font_path의 basename과는 다른 문자열이라 이걸로 검사해야 한다).
-    assert PDFService.FONT_NAME.encode() in raw
+    # 어떤 한글 폰트가 잡히는지는 OS마다 다르다(macOS는 AppleGothic, CI는 NanumGothic).
+    # 폰트 패밀리 이름으로 검사하면 환경에 따라 실패하므로 불변식으로 검사한다:
+    # 표준 14종(Helvetica 등)은 절대 임베드되지 않으므로, /FontFile2가 있다는 것은
+    # TrueType 폰트가 실제로 PDF에 박혔다는 뜻이다. 이게 없으면 한글이 네모로 나온다.
+    assert b'/FontFile2' in raw
