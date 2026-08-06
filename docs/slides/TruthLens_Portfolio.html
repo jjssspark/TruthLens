@@ -32,10 +32,12 @@
   --font-sans: "Inter", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* 슬라이드 한 장의 고정 크기(16:9). 화면 크기에 맞춰 통째로 확대·축소한다 */
-  --stage-w: 1600px;
-  --stage-h: 900px;
-  --pad: 76px;
+  /* 슬라이드 한 장의 고정 크기(16:9) — PowerPoint 기본값과 같은 1280×720.
+     이 값이 클수록 화면에 맞추느라 더 많이 축소되어 글자가 작아진다.
+     화면 크기에 맞춰 통째로 확대·축소한다. */
+  --stage-w: 1280px;
+  --stage-h: 720px;
+  --pad: 58px;
 }
 
 * { box-sizing: border-box; }
@@ -47,8 +49,8 @@ body {
   background: var(--void);
   color: var(--ink-soft);
   font-family: var(--font-sans);
-  font-size: 17px;
-  line-height: 1.62;
+  font-size: 18px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -127,7 +129,7 @@ body {
 .slide {
   position: absolute;
   inset: 0;
-  padding: 72px var(--pad) 88px;
+  padding: 46px var(--pad) 62px;
   display: none;
   flex-direction: column;
   /* 가운데 정렬하면 내용 양에 따라 제목 높이가 장마다 달라진다.
@@ -206,7 +208,7 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .slide-num {
   font-family: var(--font-mono);
@@ -233,7 +235,7 @@ body {
 }
 
 h1 {
-  font-size: 6.2rem;
+  font-size: 5.2rem;
   font-weight: 800;
   line-height: 0.94;
   letter-spacing: -0.045em;
@@ -244,7 +246,7 @@ h1 {
   color: transparent;
 }
 h2 {
-  font-size: 2.5rem;
+  font-size: 2.1rem;
   font-weight: 700;
   line-height: 1.22;
   letter-spacing: -0.025em;
@@ -300,7 +302,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
   100% { transform: translateY(180px); opacity: 0; }
 }
 .meta-row {
-  margin-top: 30px;
+  margin-top: 22px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px 22px;
@@ -318,7 +320,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 
 /* --- 지표 --- */
 .stats {
-  margin-top: 40px;
+  margin-top: 28px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 1px;
@@ -329,7 +331,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 }
 .stat {
   background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
-  padding: 22px 20px;
+  padding: 16px 17px;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -349,7 +351,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 }
 
 /* --- 레이아웃 --- */
-.grid { display: grid; gap: 18px; }
+.grid { display: grid; gap: 13px; }
 .g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .g3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 /* 4장이 3+1로 갈라지면 슬라이드가 화면을 넘긴다. 넓은 화면에서만 4열 고정 */
@@ -363,11 +365,11 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
   border: 1px solid rgba(148, 197, 255, 0.16);
   border-radius: 14px;
-  padding: 20px 22px;
+  padding: 15px 17px;
   backdrop-filter: blur(10px);
 }
-.card > h3 + p, .card > h3 + ul { margin-top: 9px; }
-.card p { font-size: 0.9rem; color: var(--mute); line-height: 1.62; }
+.card > h3 + p, .card > h3 + ul { margin-top: 7px; }
+.card p { font-size: 0.88rem; color: var(--mute); line-height: 1.58; }
 
 .card--accent {
   border-color: rgba(34, 211, 238, 0.32);
@@ -378,11 +380,11 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 ul.plain { list-style: none; margin: 0; padding: 0; }
 ul.plain li {
   position: relative;
-  padding-left: 20px;
-  margin-bottom: 10px;
-  font-size: 0.92rem;
+  padding-left: 18px;
+  margin-bottom: 7px;
+  font-size: 0.9rem;
   color: var(--mute);
-  line-height: 1.6;
+  line-height: 1.55;
 }
 ul.plain li::before {
   content: "";
@@ -393,7 +395,7 @@ ul.plain li::before {
   background: var(--cyan);
   box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
 }
-.card ul.plain li { font-size: 0.87rem; margin-bottom: 8px; }
+.card ul.plain li { font-size: 0.85rem; margin-bottom: 6px; }
 
 /* --- 표 --- */
 .table-wrap {
@@ -403,10 +405,10 @@ ul.plain li::before {
   overflow-x: auto;
   background: rgba(255, 255, 255, 0.03);
 }
-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 520px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 th {
   text-align: left;
-  padding: 12px 16px;
+  padding: 8px 13px;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 600;
@@ -418,7 +420,7 @@ th {
   white-space: nowrap;
 }
 td {
-  padding: 12px 16px;
+  padding: 8px 13px;
   border-bottom: 1px solid rgba(148, 197, 255, 0.08);
   color: var(--mute);
   vertical-align: top;
@@ -448,36 +450,36 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   border: 1px solid rgba(148, 197, 255, 0.16);
   border-left: 2px solid var(--cyan);
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 11px 14px;
 }
 .decision .tag {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 7px;
+  margin-bottom: 4px;
 }
-.decision h3 { font-size: 0.98rem; margin-bottom: 10px; }
-.decision dl { margin: 0; display: grid; grid-template-columns: 46px 1fr; gap: 5px 12px; }
+.decision h3 { font-size: 0.94rem; margin-bottom: 6px; }
+.decision dl { margin: 0; display: grid; grid-template-columns: 42px 1fr; gap: 3px 10px; }
 .decision dt {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--cyan);
-  padding-top: 3px;
+  padding-top: 2px;
 }
 /* timestamp/level/message/... 처럼 공백 없는 긴 code가 칸을 넘어 dt 라벨을 덮었다.
    min-width:0이 없으면 그리드 트랙이 콘텐츠 너비까지 늘어나 줄바꿈 자체가 안 걸린다. */
 .decision dd {
   margin: 0;
   min-width: 0;
-  font-size: 0.865rem;
+  font-size: 0.83rem;
   color: var(--mute);
-  line-height: 1.55;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
@@ -508,9 +510,9 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
 /* --- 로그 --- */
 .log {
   display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 0 16px;
-  padding: 13px 0;
+  grid-template-columns: 86px 1fr;
+  gap: 0 14px;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(148, 197, 255, 0.09);
 }
 .log:last-of-type { border-bottom: none; }
@@ -522,7 +524,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   color: var(--faint);
   padding-top: 3px;
 }
-.log p { font-size: 0.875rem; color: var(--mute); line-height: 1.6; }
+.log p { font-size: 0.85rem; color: var(--mute); line-height: 1.5; }
 .log .sym { color: var(--red); font-weight: 500; }
 .log .fix { color: var(--green); font-weight: 600; }
 @media (max-width: 620px) {
@@ -531,7 +533,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
 
 .quote {
   margin: 0;
-  padding: 18px 24px;
+  padding: 14px 20px;
   border-left: 2px solid var(--cyan);
   background: linear-gradient(90deg, rgba(34, 211, 238, 0.08), transparent 70%);
   border-radius: 0 12px 12px 0;
@@ -542,8 +544,8 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
 }
 
 .foot {
-  margin-top: 26px;
-  padding-top: 14px;
+  margin-top: 18px;
+  padding-top: 11px;
   border-top: 1px solid rgba(148, 197, 255, 0.1);
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -552,13 +554,13 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   line-height: 1.7;
 }
 
-.spread { margin-top: 26px; }
+.spread { margin-top: 18px; }
 
 /* --- 인쇄 · PDF 내보내기 ---
    화면에서는 한 장씩 보여주지만, 인쇄할 땐 9장을 전부 펼쳐 한 페이지에 한 장씩 넣는다.
    Cmd+P → 대상 "PDF로 저장" → 배경 그래픽 켜기 */
 @media print {
-  @page { size: 297mm 167mm; margin: 0; }
+  @page { size: 1280px 720px; margin: 0; }
 
   body {
     height: auto;
@@ -583,8 +585,8 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     position: relative;
     inset: auto;
     display: flex !important;
-    width: 297mm;
-    height: 167mm;
+    width: 1280px;
+    height: 720px;
     animation: none;
     page-break-after: always;
     break-after: page;
@@ -1067,7 +1069,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
 
   // 화면 크기에 맞춰 무대 전체를 확대·축소. 요소별로 줄이지 않아 비율이 그대로 유지된다.
   function fit() {
-    var scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+      var scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
     stage.style.setProperty('--scale', scale);
   }
 
