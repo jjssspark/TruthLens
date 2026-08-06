@@ -32,26 +32,37 @@
   --font-sans: "Inter", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --pad: clamp(28px, 5vw, 84px);
+  /* 슬라이드 한 장의 고정 크기(16:9). 화면 크기에 맞춰 통째로 확대·축소한다 */
+  --stage-w: 1600px;
+  --stage-h: 900px;
+  --pad: 76px;
 }
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
-
 body {
   margin: 0;
+  height: 100vh;
+  overflow: hidden;
   background: var(--void);
   color: var(--ink-soft);
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.62;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  body { scroll-snap-type: y proximity; }
+/* 무대: 화면 정중앙에 1600×900 슬라이드를 놓고 scale로 맞춘다.
+   내부 요소를 vw/clamp로 잡으면 요소마다 따로 줄어들어 비율이 깨지므로,
+   전부 px로 고정하고 무대 하나만 변환한다. */
+.stage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  transform-origin: center center;
 }
 
 /* --- 고정 배경 레이어 --- */
@@ -112,52 +123,84 @@ body {
   50%      { transform: translate3d(-5%, -4%, 0) scale(1.06); }
 }
 
-/* --- 사이드 레일 --- */
-.rail {
-  position: fixed;
-  right: clamp(12px, 2vw, 28px);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 20;
-}
-.rail ol {
-  list-style: none;
-  margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.rail a {
-  display: block;
-  width: 26px;
-  padding: 3px 8px 3px 0;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.04em;
-  color: rgba(138, 164, 200, 0.45);
-  text-decoration: none;
-  text-align: right;
-  border-right: 1.5px solid rgba(148, 197, 255, 0.16);
-  transition: color 180ms ease, border-color 180ms ease;
-}
-.rail a:hover { color: var(--mute); }
-.rail a.active {
-  color: var(--cyan);
-  border-right-color: var(--cyan);
-}
-@media (max-width: 860px) { .rail { display: none; } }
-
 /* --- 슬라이드 --- */
 .slide {
-  position: relative;
-  min-height: 100vh;
-  padding: clamp(48px, 7vh, 88px) var(--pad);
-  max-width: 1240px;
-  margin: 0 auto;
-  display: flex;
+  position: absolute;
+  inset: 0;
+  padding: 72px var(--pad) 88px;
+  display: none;
   flex-direction: column;
-  justify-content: center;
-  scroll-snap-align: start;
-  border-bottom: 1px solid rgba(148, 197, 255, 0.07);
+  /* 가운데 정렬하면 내용 양에 따라 제목 높이가 장마다 달라진다.
+     넘길 때 제목이 위아래로 튀지 않도록 위쪽 기준으로 맞춘다. */
+  justify-content: flex-start;
 }
+.slide.is-active {
+  display: flex;
+  animation: slide-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- 페이지 번호 --- */
+.page-num {
+  position: absolute;
+  right: var(--pad);
+  bottom: 34px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.page-num b {
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+/* --- 하단 진행 바 · 이동 버튼 --- */
+.progress {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: rgba(148, 197, 255, 0.12);
+}
+.progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
+  transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deck-nav {
+  position: absolute;
+  left: var(--pad);
+  bottom: 28px;
+  display: flex;
+  gap: 8px;
+}
+.deck-nav button {
+  width: 34px; height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.deck-nav button:hover:not(:disabled) {
+  border-color: rgba(34, 211, 238, 0.5);
+  color: var(--cyan);
+  background: rgba(34, 211, 238, 0.08);
+}
+.deck-nav button:disabled { opacity: 0.3; cursor: default; }
+.deck-nav button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
 .slide-head {
   display: flex;
@@ -190,7 +233,7 @@ body {
 }
 
 h1 {
-  font-size: clamp(3rem, 9vw, 6.5rem);
+  font-size: 6.2rem;
   font-weight: 800;
   line-height: 0.94;
   letter-spacing: -0.045em;
@@ -201,7 +244,7 @@ h1 {
   color: transparent;
 }
 h2 {
-  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  font-size: 2.5rem;
   font-weight: 700;
   line-height: 1.22;
   letter-spacing: -0.025em;
@@ -218,7 +261,7 @@ h3 {
 p { margin: 0; color: var(--ink-soft); }
 
 .lede {
-  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  font-size: 1.16rem;
   color: var(--mute);
   max-width: 62ch;
   line-height: 1.68;
@@ -232,10 +275,10 @@ b, strong { color: var(--ink); font-weight: 600; }
 code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cyan); }
 
 /* --- 커버 --- */
-.cover { justify-content: center; }
+.slide.cover { justify-content: center; }
 .cover .sub {
   margin-top: 20px;
-  font-size: clamp(1.05rem, 2vw, 1.4rem);
+  font-size: 1.38rem;
   font-weight: 500;
   color: var(--ink);
   letter-spacing: -0.015em;
@@ -243,7 +286,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 .scanline {
   position: absolute;
   left: var(--pad); right: var(--pad);
-  top: 26%;
+  top: 30%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--cyan), transparent);
   box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
@@ -293,7 +336,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.88em; color: var(--cya
 }
 .stat .num {
   font-family: var(--font-mono);
-  font-size: clamp(1.4rem, 2.4vw, 1.95rem);
+  font-size: 1.95rem;
   font-weight: 600;
   line-height: 1.1;
   color: var(--cyan);
@@ -511,29 +554,47 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
 
 .spread { margin-top: 26px; }
 
-/* --- 인쇄 (PDF·PPT 내보내기) --- */
+/* --- 인쇄 · PDF 내보내기 ---
+   화면에서는 한 장씩 보여주지만, 인쇄할 땐 9장을 전부 펼쳐 한 페이지에 한 장씩 넣는다.
+   Cmd+P → 대상 "PDF로 저장" → 배경 그래픽 켜기 */
 @media print {
-  @page { size: A4 landscape; margin: 0; }
+  @page { size: 297mm 167mm; margin: 0; }
+
   body {
+    height: auto;
+    overflow: visible;
     background: #04060d !important;
-    scroll-snap-type: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .rail, .scanline { display: none; }
+
+  .stage {
+    position: static;
+    width: auto;
+    height: auto;
+    transform: none;
+  }
+
+  .deck-nav, .progress, .scanline { display: none !important; }
   .orb { animation: none; }
-  .slide {
-    min-height: auto;
-    height: 100vh;
+
+  .slide,
+  .slide.is-active {
+    position: relative;
+    inset: auto;
+    display: flex !important;
+    width: 297mm;
+    height: 167mm;
+    animation: none;
     page-break-after: always;
     break-after: page;
-    border-bottom: none;
   }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .orb, .scanline { animation: none !important; }
-  html { scroll-behavior: auto; }
+  .slide.is-active { animation: none; }
 }
 </style>
 </head>
@@ -545,21 +606,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   <span class="orb orb--c"></span>
 </div>
 
-<nav class="rail" aria-label="슬라이드 이동">
-  <ol>
-    <li><a href="#s00">00</a></li>
-    <li><a href="#s01">01</a></li>
-    <li><a href="#s02">02</a></li>
-    <li><a href="#s03">03</a></li>
-    <li><a href="#s04">04</a></li>
-    <li><a href="#s05">05</a></li>
-    <li><a href="#s06">06</a></li>
-    <li><a href="#s07">07</a></li>
-    <li><a href="#s08">08</a></li>
-  </ol>
-</nav>
-
-<main>
+<main class="stage">
 
 <!-- ============ 00 COVER ============ -->
 <section class="slide cover" id="s00">
@@ -969,39 +1016,86 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   </blockquote>
 </section>
 
+  <div class="progress" aria-hidden="true"><span></span></div>
 </main>
 
 <script>
 (function () {
-  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+  var stage  = document.querySelector('.stage');
   var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-  if (!('IntersectionObserver' in window) || !slides.length) return;
+  var bar    = document.querySelector('.progress span');
+  var total  = slides.length;
+  if (!total) return;
 
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) {
-      if (!entry.isIntersecting) return;
-      var idx = slides.indexOf(entry.target);
-      links.forEach(function (l) { l.classList.remove('active'); });
-      if (links[idx]) links[idx].classList.add('active');
-    });
-  }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+  var pad = function (n) { return n < 10 ? '0' + n : String(n); };
 
-  slides.forEach(function (s) { io.observe(s); });
+  // 페이지 번호와 이동 버튼을 슬라이드마다 심는다.
+  // 마크업에 9번 복붙하면 장을 추가·삭제할 때 번호가 반드시 어긋나므로 생성으로 처리.
+  slides.forEach(function (slide, i) {
+    var num = document.createElement('div');
+    num.className = 'page-num';
+    num.innerHTML = '<b>' + pad(i + 1) + '</b> / ' + pad(total);
+    slide.appendChild(num);
 
-  // 방향키로 슬라이드 이동 — 발표 중 스크롤 위치를 정확히 맞추기 위함
-  document.addEventListener('keydown', function (e) {
-    var current = -1;
-    links.forEach(function (l, i) { if (l.classList.contains('active')) current = i; });
-    if (current < 0) current = 0;
+    var head = slide.querySelector('.slide-num');
+    if (head) head.textContent = pad(i + 1) + ' / ' + pad(total);
 
-    var next = null;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') next = current + 1;
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') next = current - 1;
-    if (next === null || next < 0 || next >= slides.length) return;
-
-    e.preventDefault();
-    slides[next].scrollIntoView({ behavior: 'smooth' });
+    var nav = document.createElement('div');
+    nav.className = 'deck-nav';
+    nav.innerHTML =
+      '<button type="button" data-go="-1" aria-label="이전 장">&#8592;</button>' +
+      '<button type="button" data-go="1" aria-label="다음 장">&#8594;</button>';
+    slide.appendChild(nav);
   });
+
+  var index = 0;
+
+  function show(next) {
+    if (next < 0 || next >= total) return;
+    slides[index].classList.remove('is-active');
+    index = next;
+    slides[index].classList.add('is-active');
+
+    bar.style.width = ((index + 1) / total * 100) + '%';
+    slides[index].querySelectorAll('[data-go]').forEach(function (b) {
+      var dir = Number(b.dataset.go);
+      b.disabled = (index + dir < 0) || (index + dir >= total);
+    });
+
+    if (history.replaceState) history.replaceState(null, '', '#s' + pad(index));
+  }
+
+  // 화면 크기에 맞춰 무대 전체를 확대·축소. 요소별로 줄이지 않아 비율이 그대로 유지된다.
+  function fit() {
+    var scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    stage.style.setProperty('--scale', scale);
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-go]');
+    if (btn) show(index + Number(btn.dataset.go));
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ') {
+      e.preventDefault(); show(index + 1);
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') {
+      e.preventDefault(); show(index - 1);
+    } else if (k === 'Home') {
+      e.preventDefault(); show(0);
+    } else if (k === 'End') {
+      e.preventDefault(); show(total - 1);
+    }
+  });
+
+  window.addEventListener('resize', fit);
+
+  // #s03 같은 해시로 들어오면 그 장부터 시작
+  var fromHash = parseInt((location.hash || '').replace('#s', ''), 10);
+  fit();
+  slides[0].classList.add('is-active');
+  show(isNaN(fromHash) ? 0 : Math.min(Math.max(fromHash, 0), total - 1));
 })();
 </script>
 
