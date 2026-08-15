@@ -70,3 +70,28 @@
 - 시도했지만 안 된 방향: 처음엔 폰트 캐시나 다운로드 폴백 문제로 의심했으나, 로그(`{"event": "pdf.font.system", "message": "시스템 한글 폰트 사용: .../AppleGothic.ttf"}`)에서 폰트 확보 자체는 정상임을 확인해 방향을 바꿈.
 - 해결: 환경마다 달라지는 폰트 패밀리 이름 대신 불변식으로 검사하도록 변경. 표준 14종(Helvetica 등)은 절대 임베드되지 않으므로 `assert b'/FontFile2' in raw`로 "TrueType 폰트가 실제로 PDF에 박혔는지"를 확인한다. 이게 없으면 한글이 네모로 나오므로 원래 지키려던 의도와 동일하다.
 - 검증: macOS 로컬 `pytest -q` 135건 전부 통과.
+
+### 14. 배포본이 느린 원인이 서버가 아니라 브라우저에서 CSS를 컴파일하고 있었던 것
+- 증상: 배포 사이트 접속 시 체감상 버벅임. 스타일이 입혀지기 전 화면이 잠깐 깨져 보임.
+- 재현 조건: 배포본 아무 페이지나 접속. 로컬에서는 잘 안 느껴짐(회선이 빨라서).
+- 원인(표면): 서버 응답은 정상이었음. `curl` 측정 결과 TTFB 45~230ms, HTML 21KB.
+- 원인(근본): 모든 템플릿이 `<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries">`(Tailwind **Play CDN**)를 쓰고 있었음. 이건 CSS 파일이 아니라 **브라우저에서 DOM을 스캔해 CSS를 실시간 생성하는 419KB짜리 JIT 컴파일러**다. Tailwind 공식 문서가 프로덕션 사용을 금지한 물건. 여기에 `lh3.googleusercontent.com`의 외부 이미지 326KB가 더해져 로그인 페이지 한 장이 788KB였음.
+- 시도했지만 안 된 방향: 처음엔 클라우드타입 프리티어의 5Mbps 대역폭 제한을 의심했음. 같은 21KB HTML이 어떤 요청에선 1.37초가 걸렸기 때문. 하지만 무거운 자원이 전부 외부 CDN(클라우드타입 대역폭을 안 씀)이라 이 가설로는 설명이 안 됐고, 자원별로 개별 측정하고 나서야 Play CDN이 범인임을 확인함.
+- 해결:
+  1. Tailwind v3.4 CLI로 사전 빌드해 정적 CSS로 교체(419KB JS → 31KB CSS). Play CDN이 v3이므로 **v4가 아닌 v3으로 고정**해야 기본값이 안 바뀜.
+  2. 외부 이미지 3장을 `static/img/*.webp`로 내재화(1,034KB → 42KB). 원본이 `aida-public` 임시 URL이라 만료되면 이미지가 깨질 위험도 함께 제거.
+  3. Google Fonts 요청 2회를 1회로 합치고 `preconnect` 추가.
+- 이 과정에서 밟을 뻔한 함정 3가지:
+  - **`login.html`은 `fontSize` 정의가 없는 별도 설정을 쓰고 있었다.** `text-body-sm` 등 25곳이 현재 아무 효과 없이 죽어 있는 상태. 두 설정을 하나로 합쳐 빌드했다면 이것들이 살아나 글자 크기가 바뀌었을 것. 그래서 CSS를 `tailwind.base.css` / `tailwind.login.css` 두 벌로 분리함.
+  - **Play CDN은 스타일을 `<head>` 맨 끝에 주입한다.** 즉 `index.css`와 작성자 인라인 `<style>`보다 뒤에 온다. `<link>`를 원래 스크립트 자리에 넣었다면 우선순위가 뒤집혀 디자인이 바뀌었을 것. 실제 배포본 DOM을 열어 주입 위치를 확인한 뒤 `</head>` 직전에 배치.
+  - **`--minify`가 색을 바꿨다.** cssnano의 `colormin`이 `rgba(200,197,204,.3)`을 `hsla(266,6%,79%,.3)`로 변환하는데, 이 왕복 변환에서 채널당 1씩 어긋남. `postcss.config.js`에서 `colormin: false`로 끄고 나머지 압축은 유지.
+- 검증: 배포본 렌더링 HTML을 기준으로 CDN만 빌드 CSS로 바꾼 사본을 만들어, 브라우저에서 `getComputedStyle` 27개 속성 × 요소 75개와 `getBoundingClientRect`를 전수 비교 → **박스 0개, 스타일 0개 차이**. `pytest -q` 135건 통과. 로그인 페이지 전송량 788KB → 72KB(91% 감소).
+- 추후 관리:
+  - 템플릿에 클래스를 추가하면 `npm run css`를 다시 돌려야 한다. Play CDN과 달리 빌드 시점에 스캔한 클래스만 CSS에 들어간다.
+  - 배포 이미지(`Dockerfile`)에 node가 없어서 빌드 산출물 `static/css/tailwind.*.css`를 커밋한다.
+  - `bg-white/8`은 Tailwind 기본 opacity 스케일에 `8`이 없어 **이전부터 무효인 클래스**다(`index.html`, `login.html`). 의도한 효과를 내려면 `bg-white/[0.08]`로 고쳐야 한다.
+- 이어서 처리한 것 — 응답 압축 부재:
+  - 위 작업 중 배포 서버가 압축을 전혀 하지 않는 걸 발견했다(`Accept-Encoding: gzip`을 보내도 `content-encoding` 헤더 없음). 정적 자산이 원본 크기 그대로 나가고 있었다.
+  - `Flask-Compress`를 `create_app()`에 추가해 해결. 로그인 HTML 16.9KB → 4.5KB, `tailwind.base.css` 31.8KB → 7.3KB, `index.css` 18.0KB → 5.8KB.
+  - **주의**: `Accept-Encoding: gzip`만 보내면 정적 파일은 압축되지 않는다. Flask-Compress가 스트리밍 응답(=`send_from_directory`로 나가는 정적 파일)에 한해 `COMPRESS_ALGORITHM_STREAMING`을 쓰는데 여기에 gzip이 빠져 있기 때문(`['zstd','br','deflate']`). 처음 측정할 때 gzip만 보내서 "정적 파일은 압축이 안 된다"고 잘못 판단했다가, 실제 브라우저 헤더(`gzip, deflate, br, zstd`)로 다시 재고서야 정상 동작을 확인했다. 브라우저는 전부 br을 보내므로 실사용에는 문제없다.
+  - 최종: 로그인 페이지 1회 로드 787KB → 34KB(96% 감소).

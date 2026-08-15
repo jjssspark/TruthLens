@@ -2,6 +2,7 @@ import os
 import uuid
 
 from flask import Flask, g, redirect, request, session, url_for
+from flask_compress import Compress
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -27,6 +28,9 @@ def create_app(config_overrides=None):
 
     # cloudtype 등 리버스 프록시 뒤에서 https:// URL이 올바르게 생성되도록
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+    # 배포 환경이 gzip을 걸어주지 않아 CSS·HTML이 원본 크기 그대로 나간다. 앱에서 직접 압축한다.
+    Compress(app)
 
     db.init_app(app)
 
