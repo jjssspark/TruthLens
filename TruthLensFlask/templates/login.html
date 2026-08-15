@@ -4,95 +4,10 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>TruthLens - 로그인</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}"/>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "surface-container": "#edeeef",
-                        "on-secondary-fixed": "#001e2f",
-                        "alert-red": "#EF4444",
-                        "secondary-fixed": "#c9e6ff",
-                        "surface-container-lowest": "#ffffff",
-                        "tertiary-fixed": "#eee1cc",
-                        "outline-variant": "#c8c5cc",
-                        "on-primary-fixed-variant": "#454650",
-                        "tertiary-fixed-dim": "#d1c5b1",
-                        "outline": "#77767c",
-                        "inverse-on-surface": "#f0f1f2",
-                        "on-tertiary-container": "#908674",
-                        "on-error": "#ffffff",
-                        "surface-bright": "#f8f9fa",
-                        "on-surface": "#191c1d",
-                        "surface-container-low": "#f3f4f5",
-                        "surface-container-high": "#e7e8e9",
-                        "on-tertiary-fixed": "#211b0e",
-                        "error-container": "#ffdad6",
-                        "deep-navy": "#1E1F28",
-                        "inverse-surface": "#2e3132",
-                        "electric-blue": "#0EA5E9",
-                        "on-background": "#191c1d",
-                        "primary": "#06070f",
-                        "on-error-container": "#93000a",
-                        "suspicious-yellow": "#F59E0B",
-                        "surface-dim": "#d9dadb",
-                        "on-primary-fixed": "#1a1b24",
-                        "secondary": "#006591",
-                        "authentic-green": "#10B981",
-                        "on-surface-variant": "#47464b",
-                        "primary-container": "#1e1f28",
-                        "on-secondary-fixed-variant": "#004c6e",
-                        "tertiary-container": "#251f12",
-                        "primary-fixed-dim": "#c6c5d2",
-                        "inverse-primary": "#c6c5d2",
-                        "on-secondary-container": "#004666",
-                        "surface": "#f8f9fa",
-                        "primary-fixed": "#e2e1ee",
-                        "on-primary-container": "#868692",
-                        "on-primary": "#ffffff",
-                        "surface-variant": "#e1e3e4",
-                        "on-secondary": "#ffffff",
-                        "on-tertiary-fixed-variant": "#4e4637",
-                        "on-tertiary": "#ffffff",
-                        "background": "#f8f9fa",
-                        "tertiary": "#0b0701",
-                        "surface-container-highest": "#e1e3e4",
-                        "error": "#ba1a1a",
-                        "secondary-fixed-dim": "#89ceff",
-                        "surface-tint": "#5d5d68",
-                        "secondary-container": "#39b8fd"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "spacing": {
-                        "section-gap": "40px",
-                        "container-padding-mobile": "16px",
-                        "gutter": "16px",
-                        "container-padding-desktop": "32px",
-                        "base": "4px"
-                    },
-                    "fontFamily": {
-                        "headline-lg": ["Hanken Grotesk"],
-                        "headline-lg-mobile": ["Hanken Grotesk"],
-                        "display-lg": ["Hanken Grotesk"],
-                        "title-md": ["Inter"],
-                        "body-sm": ["Inter"],
-                        "body-md": ["Inter"],
-                        "label-mono": ["JetBrains Mono"]
-                    }
-                }
-            }
-        };
-    </script>
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -122,6 +37,8 @@
             min-height: max(884px, 100dvh);
         }
     </style>
+    <!-- Play CDN은 스타일을 head 끝에 주입했다. 우선순위 동률 관계를 유지하려면 이 위치여야 한다. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.login.css') }}"/>
 </head>
 <body class="nx-dark font-body-md text-on-surface overflow-y-auto">
 <div class="nx-site-bg" aria-hidden="true">
@@ -160,7 +77,7 @@
         <!-- Illustration/Focus Area -->
         <div class="w-full relative aspect-square max-h-64 mt-8">
             <div class="absolute inset-0 rounded-xl overflow-hidden border border-outline-variant/30 bg-white shadow-sm">
-                <img alt="Forensic analysis interface" class="w-full h-full object-cover opacity-90" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxoqhsUb9Yzc56lNetH8l5955ZkLCcC4KsrPo__-3-cRCfH8caYDWm1ri70BfsEQ-OS_cRjJ0kqjjPqYFvIBzW9Y5PAZ0Wci_z2WpX6DO9PWPpxFlNFc0h7eXs4-NTpzqYPuOjga8JFLjFEAtQfUKMI82xwIsjqP-6740kFECejBaWVTX1hBp-tVtYBq4-9m8sCKH1j8I1Wev287vsotMrWkg2c99-pb6RwKWdq2HFm_IbAX8GURhZI8qpINHAjIyOqaP0t7nrag"/>
+                <img alt="Forensic analysis interface" class="w-full h-full object-cover opacity-90" width="512" height="512" src="{{ url_for('static', filename='img/login-hero.webp') }}"/>
             </div>
             <!-- Forensic Chips Over Image -->
             <div class="absolute top-4 right-4 flex flex-col gap-2">

@@ -1,0 +1,19 @@
+{
+  "name": "truthlensflask",
+  "version": "1.0.0",
+  "description": "TruthLens 템플릿용 Tailwind CSS 빌드 도구",
+  "private": true,
+  "scripts": {
+    "css:base": "tailwindcss -c tailwind.base.config.js -i tools/tailwind-entry.css -o static/css/tailwind.base.css && postcss static/css/tailwind.base.css --replace --no-map",
+    "css:login": "tailwindcss -c tailwind.login.config.js -i tools/tailwind-entry.css -o static/css/tailwind.login.css && postcss static/css/tailwind.login.css --replace --no-map",
+    "css": "npm run css:base && npm run css:login"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.11",
+    "cssnano": "^8.0.5",
+    "postcss": "^8.5.26",
+    "postcss-cli": "^11.0.1",
+    "tailwindcss": "^3.4.19"
+  }
+}

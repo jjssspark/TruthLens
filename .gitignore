@@ -36,3 +36,6 @@ docs/assets/video/
 CLAUDE.md
 .claude/
 .understand-anything
+
+# Tailwind 빌드 도구 (빌드 산출물 static/css/tailwind.*.css는 커밋한다 — 배포 이미지에 node가 없다)
+node_modules/

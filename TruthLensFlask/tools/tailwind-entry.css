@@ -1,0 +1,4 @@
+/* Play CDN은 preflight + components + utilities를 모두 주입한다. 동일하게 맞춘다. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -174,7 +174,7 @@
                 {% if d.get('heatmap') %}
                 <img alt="포렌식 히트맵" class="w-full h-full object-cover" src="{{ d.get('heatmap') }}"/>
                 {% else %}
-                <img alt="Forensic scan heatmap" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeqkQukCQXKRJaNR8d9iA--I5Y2l2bNgcYujZXyPR1V9O8gGm5N_zzRxorcPVIp6FDakjY-Z2fZJfpsHDN7TZY-EjxKF4C-RWS5Ff3G_nvPCJ6LY3NbiPpLDr7SnFzkxII8qDOfQsUHZSyhVP3qhrqK9hKt2ij5F4wJ0TeMkQgs_1wXNNSlEnYc-kTKrc6-JvpQLr-y7j5koafSMQliKXwsHitwzt6Kz2yjgdff6CrpYxkqBTXeqYRqxnnzgH6YPgf0fEkKdDXVA"/>
+                <img alt="Forensic scan heatmap" class="w-full h-full object-cover" width="512" height="512" loading="lazy" src="{{ url_for('static', filename='img/result-heatmap.webp') }}"/>
                 {% endif %}
                 <div class="absolute inset-0 bg-{{ verdict_color }}/20 mix-blend-overlay"></div>
                 <div class="absolute top-1/4 left-1/3 w-16 h-16 bg-{{ verdict_color }}/40 rounded-full blur-xl animate-pulse"></div>
