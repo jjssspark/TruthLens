@@ -9,10 +9,11 @@ _redis_client = None
 #
 # v2: 이미지 판별을 로컬 휴리스틱에서 학습 모델로 교체하고
 #     details에 method·model 키를 추가함
+# v3: 이미지 판별을 모델 3개의 중앙값(다수결)으로 교체함
 #
 # 주의: HF_IMAGE_MODEL 등으로 모델만 바꾸는 경우는 이 값이 그대로라 캐시가
 # 유지된다. 모델을 교체했다면 이 값도 같이 올려야 한다.
-CACHE_SCHEMA_VERSION = 2
+CACHE_SCHEMA_VERSION = 3
 
 
 def _result_key(content_hash):

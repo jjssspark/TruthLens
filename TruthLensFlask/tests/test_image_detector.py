@@ -8,10 +8,16 @@ from PIL import Image
 from ai_models.hf_deepfake_client import (
     DEFAULT_MODEL,
     IMAGE_DEFAULT_MODEL,
+    IMAGE_ENSEMBLE_MODELS,
     HFDeepfakeClient,
     HFInferenceError,
 )
-from ai_models.image_detector import METHOD_HEURISTIC, METHOD_MODEL, ImageDetector
+from ai_models.image_detector import (
+    METHOD_ENSEMBLE,
+    METHOD_HEURISTIC,
+    METHOD_MODEL,
+    ImageDetector,
+)
 from ai_models.pixel_heuristics import analyze_pixel_patterns
 
 
@@ -227,10 +233,10 @@ def test_uses_model_when_token_is_present(detector, tmp_path, monkeypatch):
         result = detector.detect(_noise_image_path(tmp_path))
 
     details = result["details"]
-    assert details["method"] == METHOD_MODEL
-    assert details["model"] == IMAGE_DEFAULT_MODEL
+    assert details["method"] == METHOD_ENSEMBLE
     assert result["score"] == 93.5
     assert details["human_percent"] == 6.5
+    # 어떤 모델을 썼는지 숨기지 않는다
     assert IMAGE_DEFAULT_MODEL in details["summary"]
 
 
@@ -266,3 +272,99 @@ def test_image_model_differs_from_video_model():
     같은 모델을 쓰면 생성 이미지를 진본으로 판정한다(실측으로 확인한 회귀).
     """
     assert IMAGE_DEFAULT_MODEL != DEFAULT_MODEL
+
+
+# --- 앙상블: 세 모델 다수결 ---
+
+def _per_model(scores):
+    """모델 이름 → 점수 매핑으로 fake_percent를 흉내낸다."""
+    def fake(self, image_bytes):
+        value = scores[self.model]
+        if isinstance(value, Exception):
+            raise value
+        return value
+    return fake
+
+
+def test_ensemble_uses_median_of_three_models(detector, tmp_path, monkeypatch):
+    """세 모델 점수의 중앙값을 쓴다.
+
+    중앙값 >= 70은 '3개 중 2개 이상이 70 이상'과 같다. 즉 다수결이다.
+    한 모델이 크게 어긋나도 나머지 둘이 가리키는 쪽으로 판정된다.
+    """
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.delenv("HF_IMAGE_MODEL", raising=False)
+    a, b, c = IMAGE_ENSEMBLE_MODELS
+
+    with patch.object(HFDeepfakeClient, "fake_percent", autospec=True,
+                      side_effect=_per_model({a: 4.5, b: 99.2, c: 100.0})):
+        result = detector.detect(_noise_image_path(tmp_path))
+
+    assert result["score"] == 99.2
+    assert result["details"]["method"] == METHOD_ENSEMBLE
+
+
+def test_ensemble_minority_cannot_flip_verdict(detector, tmp_path, monkeypatch):
+    """한 모델만 AI라고 해도 나머지 둘이 아니라면 AI로 판정하지 않는다.
+
+    모델 하나가 진짜 사진을 AI로 오판하는 경우를 막는 게 다수결의 목적이다.
+    """
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.delenv("HF_IMAGE_MODEL", raising=False)
+    a, b, c = IMAGE_ENSEMBLE_MODELS
+
+    with patch.object(HFDeepfakeClient, "fake_percent", autospec=True,
+                      side_effect=_per_model({a: 99.9, b: 2.0, c: 1.0})):
+        result = detector.detect(_noise_image_path(tmp_path))
+
+    assert result["score"] == 2.0
+    assert "사람이 제작한 이미지" in result["details"]["summary"]
+
+
+def test_ensemble_survives_single_model_failure(detector, tmp_path, monkeypatch):
+    """한 모델이 죽어도 나머지로 판정한다. 전체를 휴리스틱으로 떨어뜨리지 않는다."""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.delenv("HF_IMAGE_MODEL", raising=False)
+    a, b, c = IMAGE_ENSEMBLE_MODELS
+
+    with patch.object(HFDeepfakeClient, "fake_percent", autospec=True,
+                      side_effect=_per_model({a: HFInferenceError("HTTP 503"), b: 90.0, c: 96.0})):
+        details = detector.detect(_noise_image_path(tmp_path))["details"]
+
+    assert details["method"] == METHOD_ENSEMBLE
+    assert details["ai_percent"] == 93.0  # 남은 둘의 중앙값(= 평균)
+
+
+def test_ensemble_falls_back_when_every_model_fails(detector, tmp_path, monkeypatch):
+    """전부 실패하면 휴리스틱으로 돌아가되 모델을 쓴 척하지 않는다."""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.delenv("HF_IMAGE_MODEL", raising=False)
+    err = HFInferenceError("HTTP 503")
+    a, b, c = IMAGE_ENSEMBLE_MODELS
+
+    with patch.object(HFDeepfakeClient, "fake_percent", autospec=True,
+                      side_effect=_per_model({a: err, b: err, c: err})):
+        details = detector.detect(_noise_image_path(tmp_path))["details"]
+
+    assert details["method"] == METHOD_HEURISTIC
+    assert details["model"] is None
+    assert "로컬 휴리스틱" in details["summary"]
+
+
+def test_env_override_pins_a_single_model(detector, tmp_path, monkeypatch):
+    """HF_IMAGE_MODEL을 지정하면 그 모델 하나만 쓴다(앙상블 우회용 탈출구)."""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.setenv("HF_IMAGE_MODEL", "someone/custom-detector")
+
+    with patch.object(HFDeepfakeClient, "fake_percent", return_value=88.0):
+        details = detector.detect(_noise_image_path(tmp_path))["details"]
+
+    assert details["method"] == METHOD_MODEL
+    assert details["model"] == "someone/custom-detector"
+    assert details["ai_percent"] == 88.0
+
+
+def test_ensemble_has_three_distinct_models():
+    """중앙값이 다수결이 되려면 홀수여야 하고, 서로 다른 모델이어야 의미가 있다."""
+    assert len(IMAGE_ENSEMBLE_MODELS) == 3
+    assert len(set(IMAGE_ENSEMBLE_MODELS)) == 3

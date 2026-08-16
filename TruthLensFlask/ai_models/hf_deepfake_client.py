@@ -16,6 +16,20 @@ DEFAULT_MODEL = "prithivMLmods/deepfake-detector-model-v1"
 # 위 딥페이크 모델을 정지 이미지에 쓰면 생성 이미지를 진본으로 판정한다(실측 3장 전부 오판).
 IMAGE_DEFAULT_MODEL = "haywoodsloan/ai-image-detector-deploy"
 
+# 이미지 판별은 이 셋의 중앙값을 쓴다(= 2표 이상 다수결).
+#
+# 실측 35장(AI 19 / 진본 16)에서 세 모델이 서로 반대로 틀렸다.
+#   haywoodsloan  AI 14/19, 오탐 0/16   ← 놓치지만 진짜 사진을 의심하지 않음
+#   Organika      AI 19/19, 오탐 5/16   ← 다 잡지만 진짜 사진을 의심함
+#   Ateeqq        AI 19/19, 오탐 5/16
+# 중앙값을 쓰면 AI 19/19, 오탐 2/16 (정확도 85.7% → 94.3%).
+# 홀수여야 중앙값이 다수결이 된다. 모델을 추가할 거면 5개로 늘린다.
+IMAGE_ENSEMBLE_MODELS = (
+    IMAGE_DEFAULT_MODEL,
+    "Organika/sdxl-detector",
+    "Ateeqq/ai-vs-human-image-detector",
+)
+
 # 모델마다 라벨 표기가 달라 소문자로 비교한다
 FAKE_LABELS = {"fake", "deepfake", "ai", "ai_generated", "artificial", "spoof"}
 
