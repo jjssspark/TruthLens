@@ -4,6 +4,7 @@ import uuid
 from flask import Flask, g, redirect, request, session, url_for
 from flask_compress import Compress
 from dotenv import load_dotenv
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -61,11 +62,22 @@ def create_app(config_overrides=None):
             return fail("INTERNAL_ERROR", "서버 오류가 발생했습니다.", 500)
         return "서버 오류가 발생했습니다.", 500
 
-    # 로컬 개발용 SQLite를 쓸 때는 schema.sql을 수동 실행할 필요 없이 테이블을 자동 생성한다
+    # 없는 테이블만 만든다. 예전에는 SQLite일 때만 돌렸는데, 배포 DB를 외부
+    # 관리형 Postgres로 옮기면서 모든 백엔드에서 돌게 했다. 그쪽엔 schema.sql을
+    # 손으로 실행해 줄 사람이 없다.
     # (블루프린트 등록 이후에 실행해야 모든 모델이 SQLAlchemy 메타데이터에 등록된 상태가 된다)
-    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
-        with app.app_context():
+    with app.app_context():
+        try:
             db.create_all()
+        except SQLAlchemyError:
+            # gunicorn 워커 2개가 동시에 부팅하면 양쪽 다 CREATE TABLE을 시도해
+            # 한쪽이 "이미 존재함"으로 터진다. 여기서 죽으면 크래시 루프가 되므로
+            # 기동은 계속한다. DB가 정말 안 붙는 경우는 /ready가 503으로 알린다.
+            app.logger.warning(
+                "테이블 자동 생성 실패 — /ready로 DB 상태를 확인할 것",
+                exc_info=True,
+                extra={"event": "db.create_all.failed"},
+            )
 
     return app
 

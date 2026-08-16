@@ -2,6 +2,7 @@ flask
 flask-compress
 flask-sqlalchemy
 pymysql
+psycopg2-binary
 python-dotenv
 gunicorn
 celery
