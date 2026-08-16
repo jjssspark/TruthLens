@@ -543,3 +543,218 @@ body.nx-dark .scanning-anim {
   .nx-card { transition: none; }
   .nx-card:hover { transform: none; }
 }
+
+/* ============================================================
+   분석 진행 오버레이 (nx-scan-*)
+   업로드가 끝난 뒤 실제 판별에 3~6초가 걸린다. 그 구간에 아무 피드백이
+   없으면 멈춘 것처럼 보인다. 서버가 진행률을 주지 않으므로 가짜 퍼센트
+   대신 실제 단계명 + 실경과 시간 + 스캔 애니메이션으로 채운다.
+   ============================================================ */
+
+.nx-scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(14, 165, 233, 0.16), transparent 60%),
+    rgba(6, 7, 15, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nx-scan-overlay[data-open='true'] {
+  opacity: 1;
+}
+
+.nx-scan-panel {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nx-scan-overlay[data-open='true'] .nx-scan-panel {
+  transform: none;
+}
+
+/* --- 스캔 뷰포트: 업로드한 이미지 위를 훑는 시각 --- */
+
+.nx-scan-viewport {
+  position: relative;
+  width: 208px;
+  height: 208px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0b1220;
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.35), 0 24px 60px -20px rgba(14, 165, 233, 0.55);
+}
+
+.nx-scan-viewport img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.62;
+}
+
+/* 미리보기가 없는 경우(논문·뉴스)를 위한 대체 코어 */
+.nx-scan-core {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #38bdf8;
+  font-size: 60px;
+}
+
+.nx-scan-grid {
+  position: absolute;
+  inset: 0;
+  background-size: 26px 26px;
+  background-image:
+    linear-gradient(to right, rgba(56, 189, 248, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.16) 1px, transparent 1px);
+}
+
+.nx-scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
+  box-shadow: 0 0 18px 3px rgba(14, 165, 233, 0.75);
+  animation: nx-scan-sweep 2.1s ease-in-out infinite;
+}
+
+@keyframes nx-scan-sweep {
+  0% { top: -2%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* 모서리 브래킷 — 계측 장비 같은 인상 */
+.nx-scan-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #38bdf8;
+}
+.nx-scan-bracket--tl { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+.nx-scan-bracket--tr { top: 10px; right: 10px; border-left: 0; border-bottom: 0; }
+.nx-scan-bracket--bl { bottom: 10px; left: 10px; border-right: 0; border-top: 0; }
+.nx-scan-bracket--br { bottom: 10px; right: 10px; border-left: 0; border-top: 0; }
+
+/* --- 헤드라인 · 경과 시간 --- */
+
+.nx-scan-title {
+  color: #f1f5f9;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.nx-scan-elapsed {
+  color: #7dd3fc;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+/* --- 업로드 진행률: 서버에서 오는 실제 값 --- */
+
+.nx-scan-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.nx-scan-progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0ea5e9, #22d3ee);
+  transition: width 180ms linear;
+}
+
+.nx-scan-progress[hidden] { display: none; }
+
+/* --- 단계 목록 --- */
+
+.nx-scan-stages {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nx-scan-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(203, 213, 225, 0.45);
+  font-size: 13px;
+  transition: color 260ms ease;
+}
+
+.nx-scan-stage-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.4);
+  transition: background 260ms ease, box-shadow 260ms ease;
+}
+
+.nx-scan-stage[data-state='done'] {
+  color: rgba(203, 213, 225, 0.8);
+}
+.nx-scan-stage[data-state='done'] .nx-scan-stage-dot {
+  background: #10b981;
+}
+
+.nx-scan-stage[data-state='active'] {
+  color: #f1f5f9;
+}
+.nx-scan-stage[data-state='active'] .nx-scan-stage-dot {
+  background: #0ea5e9;
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+  animation: nx-scan-pulse 1.4s ease-out infinite;
+}
+
+@keyframes nx-scan-pulse {
+  to { box-shadow: 0 0 0 7px rgba(14, 165, 233, 0); }
+}
+
+.nx-scan-note {
+  color: rgba(148, 163, 184, 0.75);
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+@media (max-width: 380px) {
+  .nx-scan-viewport { width: 168px; height: 168px; }
+  .nx-scan-title { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-scan-overlay,
+  .nx-scan-panel { transition: none; }
+  .nx-scan-beam { animation: none; top: 50%; opacity: 0.9; }
+  .nx-scan-stage[data-state='active'] .nx-scan-stage-dot { animation: none; }
+}

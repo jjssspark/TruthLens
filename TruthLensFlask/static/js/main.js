@@ -59,6 +59,108 @@ const TruthLens = {
     const wrap = container.querySelector('.tl-progress-wrap');
     if (wrap) wrap.remove();
   },
+
+  /**
+   * 전체 화면 분석 오버레이를 띄운다.
+   *
+   * 업로드 구간은 XHR이 주는 실제 진행률을 쓴다. 그 뒤 판별 구간은 서버가
+   * 진행률을 주지 않으므로 퍼센트를 만들어내지 않는다. 대신 실제 파이프라인
+   * 단계명을 순서대로 보여주고, 마지막 단계는 응답이 올 때까지 켜둔 채
+   * 실제 경과 시간을 센다. 없는 정보를 있는 척하지 않는다.
+   *
+   * @param {{title?: string, previewUrl?: string|null, icon?: string, stages: string[]}} options
+   * @returns {{setUploadPercent: (n:number)=>void, startAnalysis: ()=>void, close: ()=>void}}
+   */
+  showAnalysisOverlay({ title = '분석 중', previewUrl = null, icon = 'radar', stages = [] } = {}) {
+    const overlay = document.createElement('div');
+    overlay.className = 'nx-scan-overlay';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.setAttribute('aria-label', title);
+
+    const visual = previewUrl
+      ? `<img src="${previewUrl}" alt="">`
+      : `<div class="nx-scan-core"><span class="material-symbols-outlined" style="font-size:60px">${icon}</span></div>`;
+
+    overlay.innerHTML = `
+      <div class="nx-scan-panel">
+        <div class="nx-scan-viewport">
+          ${visual}
+          <div class="nx-scan-grid"></div>
+          <div class="nx-scan-beam"></div>
+          <span class="nx-scan-bracket nx-scan-bracket--tl"></span>
+          <span class="nx-scan-bracket nx-scan-bracket--tr"></span>
+          <span class="nx-scan-bracket nx-scan-bracket--bl"></span>
+          <span class="nx-scan-bracket nx-scan-bracket--br"></span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <p class="nx-scan-title"></p>
+          <span class="nx-scan-elapsed">경과 0.0초</span>
+        </div>
+        <div class="nx-scan-progress"><div class="nx-scan-progress-bar"></div></div>
+        <ul class="nx-scan-stages">
+          ${stages.map((s) => `<li class="nx-scan-stage"><span class="nx-scan-stage-dot"></span><span>${s}</span></li>`).join('')}
+        </ul>
+        <p class="nx-scan-note">창을 닫지 마세요. 결과가 준비되면 자동으로 이동합니다.</p>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => overlay.setAttribute('data-open', 'true'));
+
+    const titleEl = overlay.querySelector('.nx-scan-title');
+    const elapsedEl = overlay.querySelector('.nx-scan-elapsed');
+    const progressEl = overlay.querySelector('.nx-scan-progress');
+    const barEl = overlay.querySelector('.nx-scan-progress-bar');
+    const stageEls = Array.from(overlay.querySelectorAll('.nx-scan-stage'));
+
+    titleEl.textContent = '업로드 중';
+
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      elapsedEl.textContent = `경과 ${((Date.now() - startedAt) / 1000).toFixed(1)}초`;
+    }, 100);
+
+    let stageIndex = -1;
+    let stageTimer = null;
+
+    const activate = (index) => {
+      stageIndex = index;
+      stageEls.forEach((el, i) => {
+        el.dataset.state = i < index ? 'done' : i === index ? 'active' : '';
+      });
+    };
+
+    return {
+      setUploadPercent(percent) {
+        barEl.style.width = `${Math.min(Math.max(percent, 0), 100)}%`;
+      },
+
+      /** 업로드 완료 → 판별 구간. 앞 단계는 실제로 빠르게 끝나므로 순차 점등하고,
+       *  마지막(모델 판정) 단계에 머문 채 응답을 기다린다. */
+      startAnalysis() {
+        titleEl.textContent = title;
+        progressEl.hidden = true;
+        activate(0);
+        stageTimer = setInterval(() => {
+          if (stageIndex >= stageEls.length - 1) {
+            clearInterval(stageTimer);
+            stageTimer = null;
+            return;
+          }
+          activate(stageIndex + 1);
+        }, 700);
+      },
+
+      close() {
+        clearInterval(timer);
+        if (stageTimer) clearInterval(stageTimer);
+        overlay.removeAttribute('data-open');
+        document.body.style.overflow = '';
+        setTimeout(() => overlay.remove(), 220);
+      },
+    };
+  },
 };
 
 window.TruthLens = TruthLens;

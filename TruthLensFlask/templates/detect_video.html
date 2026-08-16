@@ -226,23 +226,34 @@
 
         detectButton.disabled = true;
         detectButton.classList.add('opacity-80');
-        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 업로드 중... 0%';
+
+        const overlay = TruthLens.showAnalysisOverlay({
+            title: '딥페이크 판별 중',
+            icon: 'movie',
+            stages: [
+                '파일 해시 계산 · 중복 분석 확인',
+                '영상에서 프레임 균등 샘플링',
+                '프레임별 딥페이크 모델 추론',
+                '프레임 결과 종합',
+            ],
+        });
 
         TruthLens.uploadWithProgress("{{ url_for('video.detect_video_api') }}", formData, {
             onProgress: (percent) => {
-                TruthLens.renderProgressBar(detectButton.parentElement, percent);
-                const label = percent < 100 ? `업로드 중... ${percent}%` : '분석 중...';
-                detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
+                overlay.setUploadPercent(percent);
+                if (percent >= 100) overlay.startAnalysis();
             },
             onSuccess: (json) => {
                 if (json.success && json.data.request_id) {
                     window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
                 } else {
+                    overlay.close();
                     alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
                     resetDetectButton();
                 }
             },
             onError: (data) => {
+                overlay.close();
                 alert((data && data.message) || '분석 요청 중 오류가 발생했습니다.');
                 resetDetectButton();
             },

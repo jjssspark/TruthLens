@@ -286,27 +286,46 @@
         if (!selectedFiles.length) return;
 
         detectButton.disabled = true;
-        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 업로드 중... 0%';
         detectButton.classList.add('opacity-80');
 
         const formData = new FormData();
         selectedFiles.forEach((file) => formData.append('file', file));
 
+        // 업로드한 이미지를 그대로 스캔 화면에 띄운다. 내 파일이 분석되고 있다는 게 보여야 한다.
+        const previewUrl = URL.createObjectURL(selectedFiles[0]);
+        const overlay = TruthLens.showAnalysisOverlay({
+            title: 'AI 생성 여부 판별 중',
+            previewUrl,
+            stages: [
+                '파일 해시 계산 · 중복 분석 확인',
+                '메타데이터(EXIF) 추출',
+                '픽셀 조작 히트맵 생성',
+                'AI 생성 판별 모델 추론',
+            ],
+        });
+        const finish = () => {
+            overlay.close();
+            URL.revokeObjectURL(previewUrl);
+        };
+
         TruthLens.uploadWithProgress("{{ url_for('image.detect_image_api') }}", formData, {
             onProgress: (percent) => {
-                TruthLens.renderProgressBar(detectButton.parentElement, percent);
-                const label = percent < 100 ? `업로드 중... ${percent}%` : '분석 중...';
-                detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
+                overlay.setUploadPercent(percent);
+                if (percent >= 100) overlay.startAnalysis();
             },
             onSuccess: (json) => {
                 if (json.success && json.data.request_ids && json.data.request_ids.length) {
+                    // 결과 페이지로 넘어가므로 오버레이를 유지한 채 이동한다(깜빡임 방지)
+                    URL.revokeObjectURL(previewUrl);
                     window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_ids[0]);
                 } else {
+                    finish();
                     alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
                     resetDetectButton();
                 }
             },
             onError: (data) => {
+                finish();
                 alert((data && data.message) || '분석 요청 중 오류가 발생했습니다.');
                 resetDetectButton();
             },

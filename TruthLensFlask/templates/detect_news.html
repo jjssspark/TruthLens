@@ -180,7 +180,20 @@
 
         analyzeButton.disabled = true;
         analyzeButton.classList.add('opacity-80');
-        analyzeButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 분석 중...';
+
+        // 업로드가 없는 흐름이라 진행률 구간 없이 바로 분석 단계로 들어간다.
+        const overlay = TruthLens.showAnalysisOverlay({
+            title: '뉴스 신뢰도 분석 중',
+            icon: 'newspaper',
+            stages: [
+                '본문 추출 · 중복 분석 확인',
+                '출처·발행 매체 확인',
+                '주장 문장 분리',
+                '언어 모델 판정',
+            ],
+        });
+        overlay.startAnalysis();
+        let navigating = false;
 
         try {
             const res = await fetch("{{ url_for('news.detect_news_api') }}", {
@@ -189,6 +202,8 @@
             });
             const json = await res.json();
             if (res.ok && json.success && json.data.request_id) {
+                // 결과 페이지로 넘어가므로 오버레이를 유지한다(깜빡임 방지)
+                navigating = true;
                 window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
             } else {
                 alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
@@ -196,10 +211,13 @@
         } catch (err) {
             alert('분석 요청 중 오류가 발생했습니다.');
         } finally {
-            scanner.classList.add('hidden');
-            analyzeButton.disabled = false;
-            analyzeButton.classList.remove('opacity-80');
-            analyzeButton.innerHTML = '<span class="material-symbols-outlined group-hover:rotate-12 transition-transform">analytics</span> 소스 분석하기';
+            if (!navigating) {
+                overlay.close();
+                scanner.classList.add('hidden');
+                analyzeButton.disabled = false;
+                analyzeButton.classList.remove('opacity-80');
+                analyzeButton.innerHTML = '<span class="material-symbols-outlined group-hover:rotate-12 transition-transform">analytics</span> 소스 분석하기';
+            }
         }
     });
 </script>

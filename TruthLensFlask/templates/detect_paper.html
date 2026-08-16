@@ -159,26 +159,37 @@
 
         detectButton.disabled = true;
         detectButton.classList.add('opacity-80');
-        detectButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> 업로드 중... 0%';
 
         const formData = new FormData();
         formData.append('file', selectedFile);
 
+        const overlay = TruthLens.showAnalysisOverlay({
+            title: '논문 신뢰도 분석 중',
+            icon: 'description',
+            stages: [
+                '파일 해시 계산 · 중복 분석 확인',
+                'PDF 텍스트 추출',
+                '인용·참고문헌 대조',
+                '언어 모델 판정',
+            ],
+        });
+
         TruthLens.uploadWithProgress("{{ url_for('paper.detect_paper_api') }}", formData, {
             onProgress: (percent) => {
-                TruthLens.renderProgressBar(detectButton.parentElement, percent);
-                const label = percent < 100 ? `업로드 중... ${percent}%` : '분석 중...';
-                detectButton.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> ${label}`;
+                overlay.setUploadPercent(percent);
+                if (percent >= 100) overlay.startAnalysis();
             },
             onSuccess: (json) => {
                 if (json.success && json.data.request_id) {
                     window.location.href = resultUrlTemplate.replace('/0', '/' + json.data.request_id);
                 } else {
+                    overlay.close();
                     alert((json.error && json.error.message) || '분석 요청에 실패했습니다.');
                     resetDetectButton();
                 }
             },
             onError: (data) => {
+                overlay.close();
                 alert((data && data.message) || '분석 요청 중 오류가 발생했습니다.');
                 resetDetectButton();
             },
