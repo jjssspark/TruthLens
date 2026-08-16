@@ -122,3 +122,21 @@ def test_history_shows_only_current_user_requests(app, logged_in_client):
     assert response.status_code == 200
     assert f'요청 #{own_id}'.encode() in response.data
     assert f'요청 #{other_id}'.encode() not in response.data
+
+
+# --- 헬스체크: 외부 모니터링이 찌르는 엔드포인트 ---
+
+def test_health_is_reachable_without_login(client):
+    """로그인 뒤에 있으면 모니터링이 302를 받아 장애를 놓친다"""
+    response = client.get('/health')
+
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok'}
+
+
+def test_ready_reports_ready_when_database_is_reachable(client):
+    """/ready는 DB까지 확인한다"""
+    response = client.get('/ready')
+
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ready'}

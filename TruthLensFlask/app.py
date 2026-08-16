@@ -12,7 +12,9 @@ from backend.api.response import fail
 from backend.logging_config import configure_logging
 from backend.models.database import db
 
-_PUBLIC_PREFIXES = ('/login', '/auth/', '/static/')
+# /health·/ready는 외부 모니터링이 찌르는 곳이라 로그인 뒤에 두면 안 된다.
+# 로그인으로 리다이렉트되면 모니터링이 302/200을 받아 장애를 놓친다.
+_PUBLIC_PREFIXES = ('/login', '/auth/', '/static/', '/health', '/ready')
 
 
 def create_app(config_overrides=None):

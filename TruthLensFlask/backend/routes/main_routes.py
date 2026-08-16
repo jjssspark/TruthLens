@@ -1,7 +1,9 @@
 import os
 
-from flask import Blueprint, render_template
+from flask import Blueprint, current_app, render_template
 from flask import session, redirect, url_for
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.models.database import db
 from backend.models.detection_request import DetectionRequest
@@ -11,6 +13,29 @@ main_bp = Blueprint('main', __name__)
 
 # 점수가 이 값 이상이면 AI 생성으로 본다 (image_detector._make_summary와 같은 기준)
 AI_SCORE_THRESHOLD = 70
+
+
+@main_bp.route('/health', methods=['GET'])
+def health():
+    """프로세스가 살아있는지만 본다. 의존성은 확인하지 않는다.
+
+    외부 모니터링(UptimeRobot 등)이 찌르는 대상. DB 조회를 넣으면 DB가 잠깐
+    느릴 때 앱이 죽은 것으로 오인된다. 그 판단은 /ready가 한다.
+    """
+    return {'status': 'ok'}, 200
+
+
+@main_bp.route('/ready', methods=['GET'])
+def ready():
+    """DB까지 붙는지 확인한다. 실패하면 503."""
+    try:
+        db.session.execute(text('SELECT 1'))
+    except SQLAlchemyError:
+        current_app.logger.exception(
+            "readiness 확인 실패", extra={"event": "health.ready.failed"}
+        )
+        return {'status': 'unavailable'}, 503
+    return {'status': 'ready'}, 200
 
 
 @main_bp.route('/', methods=['GET'])
