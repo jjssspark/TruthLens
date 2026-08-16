@@ -1,16 +1,33 @@
 import base64
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 from PIL import Image
 
-from ai_models.image_detector import ImageDetector
+from ai_models.hf_deepfake_client import (
+    DEFAULT_MODEL,
+    IMAGE_DEFAULT_MODEL,
+    HFDeepfakeClient,
+    HFInferenceError,
+)
+from ai_models.image_detector import METHOD_HEURISTIC, METHOD_MODEL, ImageDetector
 from ai_models.pixel_heuristics import analyze_pixel_patterns
 
 
 @pytest.fixture
 def detector():
     return ImageDetector()
+
+
+@pytest.fixture(autouse=True)
+def no_hf_token(monkeypatch):
+    """단위 테스트가 외부 추론 API를 호출하지 않도록 토큰을 지운다.
+
+    .env에 실제 토큰이 있으면 detect()가 네트워크를 타서 느리고 불안정해진다.
+    모델 경로는 아래에서 fake_percent를 patch해 따로 검증한다.
+    """
+    monkeypatch.delenv("HF_TOKEN", raising=False)
 
 
 def _solid_image_path(tmp_path, color=(128, 128, 128), name="solid.jpg"):
@@ -114,12 +131,13 @@ def test_generate_heatmap_returns_decodable_png_data_uri(detector, tmp_path):
 # --- detect: 통합 ---
 
 def test_detect_returns_complete_result_shape(detector, tmp_path):
-    """detect()는 score와 6개 상세 필드를 모두 채워 반환한다"""
+    """detect()는 score와 8개 상세 필드를 모두 채워 반환한다"""
     result = detector.detect(_noise_image_path(tmp_path))
 
     assert 0 <= result["score"] <= 100
     assert set(result["details"]) == {
         "heatmap", "exif", "ai_percent", "human_percent", "confidence", "summary",
+        "method", "model",
     }
 
 
@@ -187,3 +205,64 @@ def test_confidence_varies_with_analysis_agreement():
     # 전부 일치(90)만 나오면 신뢰도 계산이 무의미하다는 뜻
     assert len(confidences) > 1
     assert min(confidences) < 90
+
+
+# --- 판정 방식: 학습 모델 vs 로컬 휴리스틱 ---
+
+def test_falls_back_to_heuristic_without_token(detector, tmp_path):
+    """토큰이 없으면 휴리스틱으로 판정하고 그 사실을 결과에 표시한다"""
+    details = detector.detect(_noise_image_path(tmp_path))["details"]
+
+    assert details["method"] == METHOD_HEURISTIC
+    assert details["model"] is None
+    assert "로컬 휴리스틱" in details["summary"]
+
+
+def test_uses_model_when_token_is_present(detector, tmp_path, monkeypatch):
+    """토큰이 있으면 학습 모델 판정값을 그대로 점수로 쓴다"""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+    monkeypatch.delenv("HF_IMAGE_MODEL", raising=False)
+
+    with patch.object(HFDeepfakeClient, "fake_percent", return_value=93.5):
+        result = detector.detect(_noise_image_path(tmp_path))
+
+    details = result["details"]
+    assert details["method"] == METHOD_MODEL
+    assert details["model"] == IMAGE_DEFAULT_MODEL
+    assert result["score"] == 93.5
+    assert details["human_percent"] == 6.5
+    assert IMAGE_DEFAULT_MODEL in details["summary"]
+
+
+def test_model_confidence_grows_with_distance_from_fifty(detector, tmp_path, monkeypatch):
+    """모델은 신뢰도를 주지 않으므로 판정이 50%에서 먼 정도로 환산한다"""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+
+    with patch.object(HFDeepfakeClient, "fake_percent", return_value=50.0):
+        undecided = detector.detect(_noise_image_path(tmp_path))["details"]["confidence"]
+    with patch.object(HFDeepfakeClient, "fake_percent", return_value=100.0):
+        certain = detector.detect(_noise_image_path(tmp_path))["details"]["confidence"]
+
+    assert undecided == 0.0
+    assert certain == 100.0
+
+
+def test_falls_back_when_model_call_fails(detector, tmp_path, monkeypatch):
+    """모델 호출이 실패하면 휴리스틱으로 돌아가되 모델을 쓴 척하지 않는다"""
+    monkeypatch.setenv("HF_TOKEN", "hf_test-token")
+
+    with patch.object(HFDeepfakeClient, "fake_percent",
+                      side_effect=HFInferenceError("추론 API가 HTTP 503을 반환했습니다")):
+        details = detector.detect(_noise_image_path(tmp_path))["details"]
+
+    assert details["method"] == METHOD_HEURISTIC
+    assert details["model"] is None
+    assert "로컬 휴리스틱" in details["summary"]
+
+
+def test_image_model_differs_from_video_model():
+    """이미지는 'AI 생성 탐지', 영상은 '얼굴 조작 탐지'로 서로 다른 문제를 푼다.
+
+    같은 모델을 쓰면 생성 이미지를 진본으로 판정한다(실측으로 확인한 회귀).
+    """
+    assert IMAGE_DEFAULT_MODEL != DEFAULT_MODEL

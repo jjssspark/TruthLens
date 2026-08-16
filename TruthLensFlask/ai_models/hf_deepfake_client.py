@@ -8,8 +8,13 @@ logger = logging.getLogger(__name__)
 # 구 엔드포인트(api-inference.huggingface.co)는 더 이상 응답하지 않는다.
 HF_ROUTER_URL = "https://router.huggingface.co/hf-inference/models/{model}"
 
-# Siglip 기반 2클래스 분류기. id2label = {0: "Fake", 1: "Real"}
+# 영상용. Siglip 기반 2클래스 분류기. id2label = {0: "Fake", 1: "Real"}
+# 얼굴이 조작됐는지를 보는 딥페이크 탐지기라, "AI가 통째로 생성한 이미지인가"와는 다른 문제를 푼다.
 DEFAULT_MODEL = "prithivMLmods/deepfake-detector-model-v1"
+
+# 이미지용. AI 생성 이미지 탐지 전용 모델. id2label = {0: "artificial", 1: "real"}
+# 위 딥페이크 모델을 정지 이미지에 쓰면 생성 이미지를 진본으로 판정한다(실측 3장 전부 오판).
+IMAGE_DEFAULT_MODEL = "haywoodsloan/ai-image-detector-deploy"
 
 # 모델마다 라벨 표기가 달라 소문자로 비교한다
 FAKE_LABELS = {"fake", "deepfake", "ai", "ai_generated", "artificial", "spoof"}
@@ -29,16 +34,19 @@ class HFDeepfakeClient:
         self.url = HF_ROUTER_URL.format(model=self.model)
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, model_env="HF_DEEPFAKE_MODEL", default_model=None):
         """HF_TOKEN이 없으면 None을 반환한다.
 
         호출부는 None일 때 로컬 휴리스틱으로 폴백하되, 어떤 방식을 썼는지
         결과에 반드시 표시해야 한다. 모델을 쓴 척하면 안 된다.
+
+        영상과 이미지는 푸는 문제가 달라 서로 다른 모델을 쓴다.
+        호출부가 자기 용도에 맞는 환경변수와 기본 모델을 지정한다.
         """
         token = os.getenv("HF_TOKEN")
-        if not token:
+        if not token or not token.strip():
             return None
-        return cls(token, os.getenv("HF_DEEPFAKE_MODEL"))
+        return cls(token.strip(), os.getenv(model_env) or default_model)
 
     def fake_percent(self, image_bytes):
         """이미지 한 장이 '가짜'일 확률을 0~100으로 반환한다."""
