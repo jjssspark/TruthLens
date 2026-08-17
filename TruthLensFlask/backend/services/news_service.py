@@ -72,7 +72,16 @@ class NewsService:
             raise
 
         # 6. Gemini 분석 (핵심 로직)
-        result = self.detector.detect(article_text)
+        #
+        # 실패하면 요청 행이 pending으로 남아 무엇이 어디서 끊겼는지 알 수 없다.
+        # failed로 표시하고 예외는 그대로 올려 라우트가 502로 응답하게 한다.
+        # (3번의 캐시 조회는 status='done'만 보므로 실패는 재사용되지 않는다)
+        try:
+            result = self.detector.detect(article_text)
+        except Exception:
+            detection_request.status = "failed"
+            db.session.commit()
+            raise
 
         # 7. 결과 저장
         detection_result = DetectionResult(

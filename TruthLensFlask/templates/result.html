@@ -314,19 +314,6 @@
         {% endif %}
     </div>
 
-    <!-- Raw Detail JSON -->
-    <details class="glass-card rounded-xl p-6 mb-6">
-        <summary class="font-title-md text-title-md text-deep-navy cursor-pointer flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">data_object</span>
-            원본 분석 데이터
-        </summary>
-        {% if result.detail_json %}
-        <pre class="mt-4 font-label-mono text-label-mono text-on-surface-variant bg-surface-container-low rounded-lg p-4 overflow-auto whitespace-pre-wrap">{{ result.detail_json | tojson(indent=2) }}</pre>
-        {% else %}
-        <p class="mt-4 font-body-sm text-body-sm text-on-surface-variant">세부 데이터가 없습니다.</p>
-        {% endif %}
-    </details>
-
     <!-- Actions -->
     <div class="flex flex-col gap-3 md:flex-row md:justify-center mt-8">
         <a href="{{ url_for('result.download_pdf_report', request_id=request.id) }}" class="bg-deep-navy text-white font-title-md text-body-md px-8 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:opacity-90 active:scale-95 transition-all no-underline">

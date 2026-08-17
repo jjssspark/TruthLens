@@ -11,6 +11,14 @@ from config import Config
 GEMINI_TIMEOUT_SEC = int(os.getenv("GEMINI_TIMEOUT_SEC", 30))
 
 
+class NewsAnalysisError(RuntimeError):
+    """뉴스 분석에 실패한 경우.
+
+    ValueError를 쓰면 안 된다. 라우트가 ValueError를 사용자 입력 오류로 보고
+    400 INPUT_REQUIRED를 반환하는데, 외부 API 장애는 사용자 잘못이 아니다.
+    """
+
+
 class NewsDetector(BaseDetector):
     """
     뉴스 AI 생성 및 가짜뉴스 판별 모델 (FR-03)
@@ -161,66 +169,24 @@ class NewsDetector(BaseDetector):
             }
 
         #############################################
-        # JSON 오류
+        # 실패는 실패로 올린다
+        #
+        # 예전에는 여기서 score 0짜리 dict를 지어내 반환했다. 그러면
+        # (1) 라우트의 502 분기가 영영 실행되지 않아 HTTP 200이 나가고,
+        # (2) 실패가 status='done'으로 저장돼 7일간 캐시되며,
+        # (3) 구글 에러 원문이 '논리성' 칸에 그대로 표시됐다.
+        # 원문은 로그에만 남기고(news_routes), 호출부가 502로 응답하게 한다.
         #############################################
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
 
-            return {
-
-                "score": 0,
-
-                "details": {
-
-                    "fake_news_score": 0,
-
-                    "source_trust": "분석 실패",
-
-                    "logic": "Gemini 응답을 JSON으로 변환하지 못했습니다.",
-
-                    "exaggeration": "",
-
-                    "suspicious_sentences": []
-
-                }
-
-            }
-
-        #############################################
-        # Gemini API 오류
-        #############################################
+            raise NewsAnalysisError(
+                f"Gemini 응답을 JSON으로 변환하지 못했습니다: {e}"
+            ) from e
 
         except Exception as e:
 
-            message = str(e)
-
-            if "429" in message:
-
-                message = "Gemini API 호출 한도를 초과했습니다."
-
-            elif "API_KEY" in message.upper():
-
-                message = "Gemini API Key를 확인하세요."
-
-            return {
-
-                "score": 0,
-
-                "details": {
-
-                    "fake_news_score": 0,
-
-                    "source_trust": "분석 실패",
-
-                    "logic": message,
-
-                    "exaggeration": "",
-
-                    "suspicious_sentences": []
-
-                }
-
-            }
+            raise NewsAnalysisError(f"Gemini 호출 실패: {e}") from e
 
     #######################################################
     # Prompt 생성
