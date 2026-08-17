@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 MAX_SAMPLED_FRAMES = 16
 FRAME_SIZE = (224, 224)
+
+# 샘플링한 프레임을 원본 해상도로 들고 있으면 4K 영상(3420x1962)은 프레임 하나가
+# 약 20MB라 16장이면 300MB를 넘는다. 컨테이너에서 워커가 메모리로 죽는다.
+#
+# 프레임을 쓰는 곳은 셋뿐이고 전부 224x224로 줄여서 본다 — 픽셀 휴리스틱,
+# 시간적 일관성, 딥페이크 모델(HF도 서버에서 리사이즈한다). 원본을 유지할
+# 이유가 없다. 실측: 원본 594KB 1.18초(score 26.9) → 640px 40KB 0.38초(score 27.7).
+FRAME_MAX_SIDE = 640
 SUSPICIOUS_FRAME_THRESHOLD = 65
 
 # 모델 호출은 프레임당 1회 왕복이라 지연·쿼터를 감안해 더 적게 쓴다
@@ -160,8 +168,29 @@ class VideoDetector(BaseDetector):
                     extra={"event": "video.model.completed"})
         return results, METHOD_MODEL, client.model
 
+    @staticmethod
+    def _downscale(frame):
+        """긴 변이 FRAME_MAX_SIDE를 넘으면 비율을 유지해 줄인다.
+
+        이미 작은 프레임은 늘리지 않는다. 없는 정보를 만들어내지 않는다.
+        """
+        height, width = frame.shape[:2]
+        longest = max(height, width)
+        if longest <= FRAME_MAX_SIDE:
+            return frame
+
+        scale = FRAME_MAX_SIDE / longest
+        return cv2.resize(
+            frame,
+            (max(1, int(width * scale)), max(1, int(height * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
+
     def _sample_frames(self, capture):
-        """영상 전체 구간에서 최대 MAX_SAMPLED_FRAMES개 프레임을 균등 샘플링한다."""
+        """영상 전체 구간에서 최대 MAX_SAMPLED_FRAMES개 프레임을 균등 샘플링한다.
+
+        디코딩한 프레임은 즉시 축소해서 보관한다 — FRAME_MAX_SIDE 주석 참고.
+        """
         total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = capture.get(cv2.CAP_PROP_FPS) or 0
 
@@ -174,7 +203,7 @@ class VideoDetector(BaseDetector):
                 ok, frame = capture.read()
                 if not ok:
                     break
-                frames.append((idx / (fps or 25.0), frame))
+                frames.append((idx / (fps or 25.0), self._downscale(frame)))
                 idx += 1
             return frames
 
@@ -186,7 +215,7 @@ class VideoDetector(BaseDetector):
             ok, frame = capture.read()
             if not ok:
                 continue
-            frames.append((frame_idx / fps, frame))
+            frames.append((frame_idx / fps, self._downscale(frame)))
 
         return frames
 

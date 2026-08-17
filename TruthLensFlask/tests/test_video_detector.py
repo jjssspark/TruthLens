@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import pytest
 
+import ai_models.video_detector as vd_module
 from ai_models.video_detector import VideoDetector
 
 
@@ -28,6 +29,39 @@ def _static_frames(count, size=(64, 64)):
     """모든 프레임이 동일 — 보간/합성 의심 신호(시간적 일관성 이상)를 흉내낸다."""
     base = np.full((size[1], size[0], 3), 128, dtype=np.uint8)
     return [base.copy() for _ in range(count)]
+
+
+def test_sampled_frames_are_downscaled(tmp_path):
+    """큰 영상은 샘플링 즉시 축소한다.
+
+    원본 해상도로 들고 있으면 4K 프레임 하나가 20MB라 15장이면 300MB를 넘어
+    컨테이너에서 워커가 메모리로 죽는다. 소비자(픽셀 휴리스틱·시간적 일관성·
+    딥페이크 모델)가 전부 224×224로 줄여 쓰므로 판정에는 영향이 없다.
+    """
+    video_path = tmp_path / "big.avi"
+    _write_video(video_path, _random_frames(20, size=(1280, 720)), size=(1280, 720))
+
+    capture = cv2.VideoCapture(str(video_path))
+    frames = VideoDetector()._sample_frames(capture)
+    capture.release()
+
+    assert frames
+    for _, frame in frames:
+        assert max(frame.shape[:2]) <= vd_module.FRAME_MAX_SIDE
+
+
+def test_small_frames_are_not_upscaled(tmp_path):
+    """이미 작은 영상은 늘리지 않는다. 없는 정보를 만들어내지 않는다."""
+    video_path = tmp_path / "small.avi"
+    _write_video(video_path, _random_frames(10))
+
+    capture = cv2.VideoCapture(str(video_path))
+    frames = VideoDetector()._sample_frames(capture)
+    capture.release()
+
+    assert frames
+    for _, frame in frames:
+        assert frame.shape[:2] == (64, 64)
 
 
 def test_model_frames_are_classified_concurrently_in_timestamp_order(monkeypatch):
