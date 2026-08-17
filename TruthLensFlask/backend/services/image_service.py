@@ -96,5 +96,9 @@ class ImageService:
         return detection_request
 
     def analyze_multiple(self, file_paths):
-        """다중 이미지(최대 10장)를 분석한다"""
+        """이미지 목록을 분석한다.
+
+        호출부(image_routes.MAX_IMAGES)가 현재 1장으로 제한하고 있다. 순차로
+        돌기 때문에 장수가 늘면 gunicorn 타임아웃을 넘긴다.
+        """
         return [self.analyze(path) for path in file_paths]

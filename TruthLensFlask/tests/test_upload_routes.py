@@ -18,6 +18,25 @@ def test_image_upload_rejects_disallowed_extension(logged_in_client):
     assert response.status_code == 400
 
 
+def test_image_upload_rejects_more_than_one_file(logged_in_client):
+    """2장 이상은 400으로 거부한다.
+
+    초과분을 조용히 잘라내면 사용자는 전부 분석된 줄 안다. 여러 장을 한 요청에서
+    순차로 돌리면 gunicorn 타임아웃을 넘겨 워커가 중단되므로, 지금은 1장만 받는다.
+    """
+    response = logged_in_client.post(
+        '/api/v1/detect/image',
+        data={'file': [
+            (io.BytesIO(b"fake-bytes"), 'a.jpg'),
+            (io.BytesIO(b"fake-bytes"), 'b.jpg'),
+        ]},
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()['error']['code'] == 'IMAGE_COUNT_EXCEEDED'
+
+
 def test_paper_upload_rejects_non_pdf(logged_in_client):
     """논문 엔드포인트는 PDF가 아니면 400으로 거부한다"""
     response = _upload(logged_in_client, '/api/v1/detect/paper', 'notes.txt')

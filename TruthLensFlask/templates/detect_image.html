@@ -39,10 +39,10 @@
             <div class="space-y-2 mb-8">
                 <h3 class="font-title-md text-title-md text-on-surface">포렌식 자료를 드래그 앤 드롭 하세요</h3>
                 <p class="text-body-sm text-on-surface-variant">JPG, PNG, WebP 지원</p>
-                <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 10장까지 업로드 가능</p>
+                <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">한 번에 1장씩 업로드 가능</p>
             </div>
             <label class="cursor-pointer">
-                <input accept="image/*" class="hidden" id="file-input" multiple type="file"/>
+                <input accept="image/*" class="hidden" id="file-input" type="file"/>
                 <div class="px-8 py-3 bg-deep-navy text-white font-semibold rounded-lg hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-2">
                     <span class="material-symbols-outlined">upload_file</span>
                     이미지 업로드
@@ -146,11 +146,25 @@
     function handleFiles(files) {
         if (!files.length) return;
         
-        // 기존 파일 목록에 추가 (최대 10개)
+        // 여러 장을 한 요청에서 순차로 분석하면 서버 응답 시간 제한을 넘겨 응답이
+        // 끊긴다. 원인을 잡을 때까지 1장으로 제한한다.
         const incoming = Array.from(files);
-        selectedFiles = [...selectedFiles, ...incoming].slice(0, 10);
-        
+        selectedFiles = [incoming[0]];
+
+        // 드래그 앤 드롭은 여러 장이 들어올 수 있다. 조용히 버리지 않는다.
+        if (incoming.length > 1) showSingleFileNotice(incoming.length);
+
         renderPreviews();
+    }
+
+    function showSingleFileNotice(count) {
+        document.getElementById('single-file-notice')?.remove();
+
+        const notice = document.createElement('p');
+        notice.id = 'single-file-notice';
+        notice.className = 'font-body-sm text-body-sm text-suspicious-yellow mb-3';
+        notice.textContent = `현재는 한 번에 1장만 분석합니다. ${count}장 중 첫 장만 선택했습니다.`;
+        previewGrid.parentElement.insertBefore(notice, previewGrid);
     }
 
     function renderPreviews() {
