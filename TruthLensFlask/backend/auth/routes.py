@@ -27,6 +27,9 @@ def email_login():
     except Exception as e:
         import logging
         logging.exception('email_login 오류')
+        # 롤백하지 않으면 세션이 더러운 채로 남아, 같은 워커가 처리하는
+        # 다음 요청까지 연쇄로 실패한다(email_signup과 동일 처리).
+        db.session.rollback()
         flash('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
         return redirect(url_for('main.login'))
 

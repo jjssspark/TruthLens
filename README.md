@@ -7,7 +7,8 @@ AI 생성 콘텐츠 판별 서비스 (Product Requirements Document 기반)
 ![TruthLens 데모 — 이미지 업로드부터 AI 생성 판별 결과까지](docs/assets/truthlens-demo.gif)
 
 **라이브 데모**: https://port-0-truthlens-mscko82687e05bd3.sel3.cloudtype.app
-(무료 티어 컨테이너로, 재시작 시 가입 계정·업로드 데이터가 초기화될 수 있습니다. 이미지 판별은 API 키 없이 바로 체험 가능합니다.)
+(무료 티어 컨테이너입니다. 가입 계정은 컨테이너 밖 관리형 PostgreSQL에 저장되어 재시작해도 남지만,
+업로드한 파일은 재시작마다 초기화되므로 과거 분석 결과의 이미지가 보이지 않을 수 있습니다.)
 
 ## 1. 프로젝트 개요
 
@@ -42,7 +43,7 @@ AI 생성 콘텐츠의 저작권·진위 여부를 둘러싼 법적·윤리적 �
 | Frontend | HTML5, CSS3, JavaScript (Vanilla / Alpine.js) | UI 렌더링, 파일 업로드, 결과 시각화 |
 | Backend | Python 3.11+, Flask 3.x | API 라우팅, 비즈니스 로직, 파일 처리 |
 | AI 분석 | Transformers, OpenCV, PyTorch | AI 생성 콘텐츠 탐지 모델 실행 |
-| Database | MariaDB 11.x | 판별 결과, 요청 이력, 콘텐츠 메타데이터 저장 |
+| Database | MariaDB 11.x (PRD 설계) — 실제 구동은 SQLite(로컬)·PostgreSQL(배포) | 판별 결과, 요청 이력, 콘텐츠 메타데이터 저장 |
 | Cache | Redis 7.x | 콘텐츠 판별 결과 캐싱, 요청 카운터 |
 | File Storage | 로컬 파일시스템 / AWS S3 (확장) | 업로드 파일 임시 저장 |
 | Task Queue | Celery + Redis | 영상 등 장시간 처리 비동기 작업 |
@@ -81,14 +82,17 @@ python app.py                     # http://localhost:3000
 
 - 최초 실행 시 SQLite(`dev.db`)에 테이블이 자동 생성됩니다.
 - `/auth/email/signup`으로 이메일 회원가입 후 로그인하면 전체 기능을 체험할 수 있습니다. 인증은 이메일/비밀번호 방식만 지원합니다.
-- 이미지 판별(FR-02)은 외부 API 키 없이 바로 동작합니다. 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
-- 영상 판별(FR-01)의 `HF_TOKEN`은 **선택**입니다. 없으면 에러 대신 로컬 휴리스틱으로 동작합니다.
+- 뉴스 판별(FR-03)은 `GEMINI_API_KEY`, 논문 판별(FR-04)은 `DEEPSEEK_API_KEY`가 필요합니다(`.env.example` 참고). 키가 없으면 앱은 정상 구동되고 해당 기능만 에러를 반환합니다.
+- 영상 판별(FR-01)과 이미지 판별(FR-02)의 `HF_TOKEN`은 **선택**입니다. 없으면 에러 대신 로컬 휴리스틱으로 동작합니다. 다만 휴리스틱은 정확도가 크게 떨어지므로, 판별 성능을 보려면 키를 넣는 편이 맞습니다.
+- **이미지 판별(FR-02)은 `HF_TOKEN`이 있으면 학습 모델 3개를 동시에 호출해 중앙값으로 판정합니다**(`ai_models/image_detector.py`). 단일 모델은 특정 생성기의 이미지를 놓쳤습니다. 자체 표본 35장(AI 19 / 진본 16)에서 85.7% → 94.3%로 올랐습니다. **표본이 작고 편중돼 있어 일반적인 정확도로 읽으면 안 됩니다**(근거와 한계는 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) 19번). 모델 하나가 실패해도 나머지로 판정합니다.
 - **영상 판별(FR-01)은 두 가지 방식으로 동작합니다.** `HF_TOKEN`이 있으면 Hugging Face 추론 API의 딥페이크 분류 모델(기본 `prithivMLmods/deepfake-detector-model-v1`)로 프레임을 판정하고, 없으면 OpenCV 픽셀 휴리스틱으로 폴백합니다. 어느 쪽을 썼는지는 결과의 `details.method`(`hf-model` / `local-heuristic`)에 항상 표시되므로, 휴리스틱 결과를 모델 판정으로 오인할 일이 없습니다. 모델 호출이 실패해도 같은 방식으로 폴백하고 그 사실을 남깁니다.
 
 ### 알려진 한계
 
-- **영상 판별(FR-01)은 `HF_TOKEN` 없이는 휴리스틱** — 위 항목 참고. 휴리스틱 모드의 정확도는 상용 딥페이크 탐지 수준이 아닙니다.
-- **Tailwind를 CDN(`cdn.tailwindcss.com`)으로 로드합니다.** 공식 문서가 프로덕션 사용을 권장하지 않는 개발용 스크립트입니다. 현재 `?plugins=forms,container-queries`로 플러그인 2개를 함께 받고 있어, CLI 빌드로 전환하려면 두 플러그인을 빌드 설정에 옮기고 폼 스타일 회귀를 확인해야 합니다. 로드맵으로 남겨둔 부분입니다.
+- **영상·이미지 판별은 `HF_TOKEN` 없이는 휴리스틱** — 위 항목 참고. 휴리스틱 모드의 정확도는 상용 탐지 수준이 아닙니다. 어느 방식으로 판정했는지는 결과의 `details.method`에 항상 표시됩니다.
+- **이미지 판별 정확도는 자체 표본 35장 기준입니다.** 해상도·촬영 기기가 편중된 표본이라 일반화할 수 없습니다.
+- **업로드 파일은 배포 컨테이너 재시작마다 사라집니다.** DB는 외부 PostgreSQL로 옮겼지만 `uploads/`는 아직 컨테이너 디스크에 있습니다.
+- **스키마 마이그레이션 도구가 없습니다.** `db.create_all()`은 없는 테이블만 만들고 컬럼 변경은 반영하지 못합니다.
 - **뉴스만 DB 캐시, 나머지는 Redis 캐시** — 7절 "캐싱 전략" 참고.
 
 **시연 시나리오와 진행상황 확인 방법**은 [`docs/DEMO.md`](docs/DEMO.md)를, 개발 중 발견한 버그와 해결 과정은 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)를 참고하세요.
@@ -128,11 +132,16 @@ python -m pytest --cov=backend --cov-report=term-missing  # 커버리지 확인
 | 스테이징(QA) | `qa` | 통합 테스트 및 QA 검증, 운영 환경과 동일 구성으로 최종 검증 |
 | 운영(Production) | `main` | 실사용자 대상 서비스, GitHub `main` 브랜치 병합 시 자동 배포 |
 
-**배포 서비스 구성**: 동일 프로젝트 내에서 서비스명을 hostname으로 상호 통신합니다.
+**배포 서비스 구성** (PRD 설계): 동일 프로젝트 내에서 서비스명을 hostname으로 상호 통신합니다.
 - Flask App — Python 3.11 기반 웹 애플리케이션 서버 (Gunicorn)
 - Celery Worker — 영상 등 장시간 비동기 분석 작업 처리
 - MariaDB — 클라우드타입 제공 데이터베이스 서비스
 - Redis — 클라우드타입 제공 캐시 서비스
+
+**DB만 위 구성과 다릅니다.** 클라우드타입 관리형 DB도 같은 무료 플랜이라 앱과 함께 멈춰서 깨울
+대상이 둘로 늘어납니다. 그래서 DB는 클라우드타입이 아니라 **컨테이너 밖 상시 가동 PostgreSQL**을
+`DATABASE_URL` 환경변수로 붙여 씁니다. 이 결정의 경위는
+[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) 17번에 있습니다.
 
 **CI/CD**: GitHub 저장소를 OAuth로 연동하여 브랜치 푸시 시 자동 빌드·배포되며,
 테스트 통과 후 배포되도록 GitHub Actions 워크플로우를 구성할 수 있습니다(선택).
@@ -143,7 +152,7 @@ API 키, DB 접속 정보 등 민감 정보는 코드에 포함하지 않고 클
 | 항목 | 사양 | 비고 |
 | --- | --- | --- |
 | Python | 3.11 이상 | Flask 3.x 호환 버전 |
-| MariaDB | 11.x | 클라우드타입 기본 제공 버전 |
+| MariaDB | 11.x | PRD 설계 기준. 실제 배포는 외부 PostgreSQL, 로컬은 SQLite |
 | Redis | 7.x | 클라우드타입 기본 제공 버전 |
 | 클러스터 리전 | Seoul | 국내 사용자 응답 속도 최소화 |
 | Dockerfile | 제공(선택) | 커스텀 빌드 환경이 필요한 경우 사용 |

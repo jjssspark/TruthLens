@@ -74,6 +74,20 @@ def test_boot_survives_when_table_creation_fails(monkeypatch, overrides, capsys)
     assert warnings[0]["error"]["type"] == "ProgrammingError"
 
 
+def test_engine_checks_connection_before_handing_it_out(overrides):
+    """풀에서 꺼낸 커넥션이 살아있는지 확인하도록 엔진이 설정돼야 한다.
+
+    외부 관리형 Postgres는 유휴 커넥션을 서버 쪽에서 먼저 끊는다. 죽은
+    커넥션을 그대로 쓰면 다음 요청이 연결 오류로 죽는다. config.py에만
+    값을 적어두고 엔진까지 전달되지 않으면 소용없으므로 엔진에서 확인한다.
+    """
+    app = create_app(config_overrides={**overrides, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+
+    with app.app_context():
+        assert db.engine.pool._pre_ping is True
+        assert db.engine.pool._recycle > 0
+
+
 def test_still_creates_tables_on_sqlite(monkeypatch, overrides):
     """기존 로컬 개발 흐름(SQLite 자동 생성)이 깨지지 않아야 한다."""
     calls = []

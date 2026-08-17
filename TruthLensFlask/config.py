@@ -23,6 +23,14 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # 외부 관리형 Postgres는 유휴 커넥션을 서버 쪽에서 먼저 끊는다. 풀에 남아 있던
+    # 죽은 커넥션을 그대로 쓰면 다음 요청이 연결 오류로 죽으므로, 빌려줄 때마다
+    # 살아있는지 확인하고(pool_pre_ping) 오래된 커넥션은 미리 버린다(pool_recycle).
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": int(os.getenv('DB_POOL_RECYCLE', 280)),
+    }
+
     # Redis 설정 (FR-05 캐싱)
     REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
     REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))

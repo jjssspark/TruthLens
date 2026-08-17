@@ -1,3 +1,4 @@
+from sqlalchemy.exc import OperationalError
 from werkzeug.security import generate_password_hash
 
 from backend.models.database import db
@@ -106,6 +107,35 @@ def test_email_login_success_sets_session_and_redirects(app, client):
 
     with client.session_transaction() as sess:
         assert sess.get('user_id') == user_id
+
+
+def test_email_login_rolls_back_when_commit_fails(app, client, monkeypatch):
+    """last_login_at 갱신이 실패하면 세션을 롤백해야 한다.
+
+    롤백하지 않으면 더러운 세션이 워커에 남아, 같은 워커가 처리하는 다음
+    요청까지 연쇄로 깨진다. 운영에서 간헐적으로만 재현되던 모양과 맞는다.
+    """
+    with app.app_context():
+        user = User(email='boom@test.com', name='유저',
+                    password_hash=generate_password_hash('pw'))
+        db.session.add(user)
+        db.session.commit()
+
+    def boom():
+        raise OperationalError("UPDATE users SET last_login_at=?", {},
+                               Exception("server closed the connection unexpectedly"))
+
+    rollbacks = []
+    monkeypatch.setattr(db.session, 'commit', boom)
+    monkeypatch.setattr(db.session, 'rollback', lambda: rollbacks.append(True))
+
+    response = client.post('/auth/email/login', data={
+        'email': 'boom@test.com',
+        'password': 'pw',
+    })
+    assert response.status_code == 302
+    assert '/login' in response.headers['Location']
+    assert rollbacks, 'commit 실패 후 롤백하지 않으면 세션이 더러운 채로 남는다'
 
 
 def test_email_login_wrong_password_redirects_to_login(app, client):
