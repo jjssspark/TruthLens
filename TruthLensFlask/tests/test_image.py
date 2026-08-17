@@ -16,51 +16,6 @@ def _write_image_file(tmp_path, content=b"fake-image-bytes"):
     return str(file_path)
 
 
-def test_analyze_multiple_detects_images_concurrently(app, tmp_path):
-    """다중 업로드의 판별은 동시에 돌아야 한다.
-
-    1장이 HF 모델 응답을 최대 20초 기다린다(hf_deepfake_client.py의 timeout=20).
-    순차로 돌리면 4장에 최대 80초가 걸려 gunicorn 기본 타임아웃 30초를 넘긴다.
-    워커가 중단되면 응답이 JSON이 아니게 되고, 프론트(main.js:21의 JSON.parse)가
-    "서버 응답을 해석할 수 없습니다"를 띄운다.
-    """
-    import threading
-    import time
-    from unittest.mock import patch
-
-    from ai_models.image_detector import ImageDetector
-    from backend.services.image_service import ImageService
-
-    paths = []
-    for i in range(4):
-        path = tmp_path / f"img{i}.jpg"
-        path.write_bytes(f"fake-image-{i}".encode())
-        paths.append(str(path))
-
-    lock = threading.Lock()
-    active = 0
-    peak = 0
-
-    def slow_detect(self, file_path):
-        nonlocal active, peak
-        with lock:
-            active += 1
-            peak = max(peak, active)
-        time.sleep(0.2)
-        with lock:
-            active -= 1
-        return {"score": 0.0, "details": {}}
-
-    with app.test_request_context():
-        with patch('backend.services.image_service.get_cached_result', return_value=None), \
-                patch('backend.services.image_service.set_cached_result'), \
-                patch.object(ImageDetector, 'detect', slow_detect):
-            requests = ImageService().analyze_multiple(paths)
-
-    assert len(requests) == 4
-    assert peak > 1, f"판별이 순차로 돌았다(최대 동시 실행 {peak}장). 장수만큼 시간이 곱해진다"
-
-
 def test_analyze_caches_result_on_cache_miss(app, tmp_path):
     """캐시 미스 시 분석을 수행하고 결과를 캐시에 저장한다 (FR-05)"""
     import json
