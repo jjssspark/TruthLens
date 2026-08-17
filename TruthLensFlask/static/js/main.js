@@ -26,7 +26,16 @@ const TruthLens = {
       if (xhr.status >= 200 && xhr.status < 300) {
         if (onSuccess) onSuccess(json);
       } else if (onError) {
-        onError((json && json.data) || { message: '분석 요청에 실패했습니다.' });
+        // 실패 봉투는 data가 항상 null이고 메시지는 error에 담긴다(backend/api/response.py).
+        // data를 읽으면 서버가 무슨 말을 하든 기본 문구로 뭉개져 원인을 알 수 없다.
+        const err = json && json.error;
+        if (!err) {
+          onError({ message: '분석 요청에 실패했습니다.' });
+        } else {
+          // traceId를 함께 보여줘야 화면에 뜬 오류와 서버 로그를 연결할 수 있다.
+          const trace = err.traceId ? ` (코드 ${err.traceId.slice(0, 8)})` : '';
+          onError({ ...err, message: `${err.message}${trace}` });
+        }
       }
     });
 
