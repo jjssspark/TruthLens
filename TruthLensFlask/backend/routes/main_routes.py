@@ -70,8 +70,8 @@ def index():
         # 카드 배지가 실제 설정 상태를 말하게 한다. 키가 없는데 "연동됨"으로
         # 보이거나, 연동해두고 "예정"으로 남아 있으면 둘 다 거짓말이 된다.
         configured_keys={
-            'GEMINI_API_KEY': bool(os.getenv('GEMINI_API_KEY')),
-            'DEEPSEEK_API_KEY': bool(os.getenv('DEEPSEEK_API_KEY')),
+            # 뉴스와 논문이 같은 키를 쓴다 — 논문 판별을 DeepSeek에서 Gemini로 옮겼다.
+            'GEMINI_API_KEY': bool(os.getenv('PAPER_API_KEY') or os.getenv('GEMINI_API_KEY')),
             'HF_TOKEN': bool(os.getenv('HF_TOKEN')),
         },
     )

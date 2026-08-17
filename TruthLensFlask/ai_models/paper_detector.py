@@ -14,8 +14,25 @@ class BaseDetector: pass
 
 logger = logging.getLogger(__name__)
 
-# deepseek-chat 컨텍스트(64K 토큰) 안에서 안전한 상한.
+# 모델 컨텍스트 안에서 안전한 상한. 발췌 샘플링(build_representative_excerpt)이
+# 이 값을 예산으로 쓴다.
 MAX_ANALYZED_CHARS = int(os.getenv("PAPER_MAX_CHARS", 50000))
+
+# 논문 판별은 OpenAI 호환 엔드포인트를 통해 호출한다.
+#
+# 원래 DeepSeek을 썼는데 잔액이 떨어지면 402 하나로 기능 전체가 멈춘다(TS-6에서
+# 이미 겪었고 다시 발생했다). 뉴스가 이미 쓰는 Gemini 키를 재사용해 외부 결제
+# 의존을 하나 줄인다. Gemini는 OpenAI 호환 엔드포인트를 제공하므로 base_url과
+# 모델명만 바꾸면 프롬프트·JSON 파싱·발췌 샘플링·인용 분석은 그대로 돈다.
+#
+# 다른 제공자로 되돌리려면 이 두 환경변수와 PAPER_API_KEY만 지정하면 된다.
+# getenv의 기본값 인자를 쓰면 안 된다. .env에 "PAPER_MODEL=" 처럼 키만 있고 값이
+# 비면 빈 문자열이 반환돼 기본값이 무시되고 호출이 깨진다. or로 받는다.
+PAPER_API_BASE_URL = (
+    os.getenv("PAPER_API_BASE_URL")
+    or "https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+PAPER_MODEL = os.getenv("PAPER_MODEL") or "gemini-2.5-flash-lite"
 
 # 참고문헌 시작을 알리는 제목. 줄 전체가 이것으로 시작할 때만 자른다
 # (본문에 "references"라는 단어가 나오는 것과 구분하기 위해).
@@ -115,10 +132,10 @@ class PaperDetector(BaseDetector):
     def __init__(self):
         # 환경변수에서 API KEY 로드 (없어도 여기서는 실패시키지 않고, 실제 호출 시점에 처리한다.
         # 그래야 API 키가 없어도 앱 자체는 정상 기동하고, 해당 기능 호출 시에만 에러를 반환한다)
-        api_key = os.getenv("DEEPSEEK_API_KEY")
+        # PAPER_API_KEY를 주면 그쪽을 우선한다 — 제공자를 바꿀 때 코드를 안 고쳐도 된다.
+        api_key = os.getenv("PAPER_API_KEY") or os.getenv("GEMINI_API_KEY")
 
-        # [수정] base_url 끝에 /v1을 명시해 주는 것이 더 안정적입니다.
-        self.client = OpenAI(api_key=api_key or "missing", base_url="https://api.deepseek.com/v1")
+        self.client = OpenAI(api_key=api_key or "missing", base_url=PAPER_API_BASE_URL)
         self._api_key_configured = bool(api_key)
 
     def extract_text_from_pdf(self, file_path):
@@ -144,29 +161,37 @@ class PaperDetector(BaseDetector):
             match = re.search(r"\{.*\}", result_text, re.DOTALL)
             if match:
                 return json.loads(match.group())
-            raise ValueError("DeepSeek 응답을 JSON으로 변환하는 데 실패했습니다.")
+            raise ValueError("분석 API 응답을 JSON으로 변환하는 데 실패했습니다.")
 
     def _friendly_error_message(self, error):
-        """DeepSeek API 예외를 사용자에게 노출 가능한 한국어 메시지로 변환한다."""
+        """분석 API 예외를 사용자에게 노출 가능한 한국어 메시지로 변환한다.
+
+        원문에는 엔드포인트 주소와 내부 코드가 섞여 있어 그대로 보여주면 안 된다.
+        """
         message = str(error)
 
-        if "DEEPSEEK_API_KEY" in message:
+        if "API_KEY가 설정되지 않았습니다" in message:
             return message
 
         if "402" in message or "Insufficient Balance" in message:
-            return "DeepSeek API 잔액이 부족합니다. API 키 결제 상태를 확인하세요."
+            return "분석 API 잔액이 부족합니다. API 키 결제 상태를 확인하세요."
 
-        if "429" in message:
-            return "DeepSeek API 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요."
+        if "429" in message or "RESOURCE_EXHAUSTED" in message:
+            return "분석 API 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요."
 
-        if "401" in message or "authentication" in message.lower():
-            return "DeepSeek API Key가 유효하지 않습니다. 키를 확인하세요."
+        # 뉴스 판별에서 겪은 것과 같은 상황 — 키가 아니라 OAuth 토큰으로 인증되면
+        # 스코프가 모자라 403이 난다. 키 미설정과 증상이 달라 따로 안내한다.
+        if "ACCESS_TOKEN_SCOPE_INSUFFICIENT" in message:
+            return "분석 API 키가 전달되지 않았습니다. GEMINI_API_KEY 환경변수를 확인하세요."
+
+        if "401" in message or "API_KEY_INVALID" in message or "authentication" in message.lower():
+            return "분석 API Key가 유효하지 않습니다. 키를 확인하세요."
 
         return "논문 분석 중 오류가 발생했습니다. 잠시 후 다시 시도하세요."
 
     def analyze_with_gpt(self, text):
         if not self._api_key_configured:
-            raise ValueError("DEEPSEEK_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.")
+            raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.")
 
         # 판별에 기여하지 않는 부분을 먼저 걷어내고, 남은 본문에서 고르게 뽑는다.
         # 어디를 읽었는지는 결과에 표시한다 — 앞부분만 보고 전체를 판정한 것처럼
@@ -227,10 +252,9 @@ DOI를 찾을 수 없으면 null
 {truncated_text}
 """
         try:
-            # [수정] model명을 "deepseek-chat"으로 변경합니다.
-            logger.info("딥시크 메세지 전송")
+            logger.info("논문 분석 요청 전송", extra={"event": "paper.api.request"})
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=PAPER_MODEL,
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
@@ -239,12 +263,12 @@ DOI를 찾을 수 없으면 null
             )
 
         except Exception as e:
-            logger.error("DeepSeek API 통신 에러 발생: %s", e)
+            logger.error("분석 API 통신 에러 발생: %s", e)
             raise
 
         result_text = response.choices[0].message.content
-        logger.info("DeepSeek 응답 수신 (길이: %d자)", len(result_text or ""))
-        logger.debug("DeepSeek 응답 원문: %s", result_text)
+        logger.info("분석 API 응답 수신 (길이: %d자)", len(result_text or ""))
+        logger.debug("분석 API 응답 원문: %s", result_text)
 
         parsed = self.parse_json_response(result_text)
 

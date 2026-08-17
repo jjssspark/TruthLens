@@ -108,8 +108,34 @@ def _fake_response(payload='{"ai_score": 42, "summary": "요약"}'):
 
 @pytest.fixture
 def detector(monkeypatch):
-    monkeypatch.setenv('DEEPSEEK_API_KEY', 'sk-test-key')
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
     return PaperDetector()
+
+
+def test_paper_detector_uses_gemini_by_default(monkeypatch):
+    """논문 판별은 기본적으로 Gemini의 OpenAI 호환 엔드포인트를 쓴다.
+
+    DeepSeek은 잔액이 떨어지면 402로 기능 전체가 멈춘다. 뉴스에서 이미 쓰는
+    Gemini 키를 재사용해 외부 의존을 하나 줄인다.
+    """
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+    monkeypatch.delenv('PAPER_API_KEY', raising=False)
+
+    detector = PaperDetector()
+
+    assert detector._api_key_configured is True
+    assert 'generativelanguage.googleapis.com' in str(detector.client.base_url)
+
+
+def test_paper_detector_prefers_paper_api_key(monkeypatch):
+    """PAPER_API_KEY를 주면 그쪽을 우선한다.
+
+    DeepSeek으로 되돌리거나 다른 제공자를 붙일 때 코드를 고치지 않아도 되게 한다.
+    """
+    monkeypatch.setenv('PAPER_API_KEY', 'other-provider-key')
+    monkeypatch.delenv('GEMINI_API_KEY', raising=False)
+
+    assert PaperDetector()._api_key_configured is True
 
 
 def test_short_paper_is_analyzed_in_full(detector):
