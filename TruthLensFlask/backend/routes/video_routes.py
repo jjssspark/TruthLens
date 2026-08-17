@@ -17,7 +17,12 @@ def detect_video_page():
 
 @video_bp.route('/api/v1/detect/video', methods=['POST'])
 def detect_video_api():
-    """영상 AI 판별 요청: 파일(MP4/AVI/MOV/WEBM, 최대 500MB) 또는 URL (FR-01)"""
+    """영상 AI 판별 요청: 파일(MP4/AVI/MOV/WEBM) 또는 URL (FR-01)
+
+    앱의 MAX_CONTENT_LENGTH는 500MB(PRD 설계값)지만, 배포 앞단 프록시가 100MB에서
+    먼저 거부한다(실측: 96MB 통과, 100MB 413). 그 413은 앱을 거치지 않으므로 여기서
+    잡을 수 없고, 화면에서는 templates/detect_video.html이 업로드 전에 막는다.
+    """
     url = request.form.get('url')
 
     if url:

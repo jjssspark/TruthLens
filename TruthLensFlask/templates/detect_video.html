@@ -49,7 +49,7 @@
                         <div class="space-y-2 mb-8">
                             <h3 class="font-title-md text-title-md text-on-surface" id="drop-zone-text">포렌식 자료를 드래그 앤 드롭 하세요</h3>
                             <p class="text-body-sm text-on-surface-variant">MP4, AVI, MOV, WEBM 지원</p>
-                            <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 500MB, 최대 10분 영상</p>
+                            <p class="text-label-mono text-label-mono text-on-tertiary-container mt-2">최대 96MB, 최대 10분 영상</p>
                         </div>
                         <label class="cursor-pointer">
                             <input accept=".mp4,.avi,.mov,.webm" class="hidden" id="file-input" type="file"/>
@@ -157,12 +157,33 @@
         updateDetectButton();
     }
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            selectedFile = e.target.files[0];
-            dropZoneText.textContent = selectedFile.name;
+    // 배포 앞단 프록시가 100MB에서 요청을 거부한다(실측: 96MB 통과, 100MB 413).
+    // 앱의 MAX_CONTENT_LENGTH를 아무리 올려도 소용없다 — 요청이 앱에 닿지 않는다.
+    // 그 413은 JSON이 아닌 HTML이라 화면에는 "서버 응답을 해석할 수 없습니다"로만
+    // 보인다. 올리기 전에 여기서 막고 이유를 알려준다.
+    const MAX_UPLOAD_BYTES = 96 * 1024 * 1024;
+
+    function acceptFile(file) {
+        if (!file) return;
+
+        if (file.size > MAX_UPLOAD_BYTES) {
+            selectedFile = null;
+            const sizeMb = (file.size / 1024 / 1024).toFixed(0);
+            dropZoneText.textContent =
+                `${file.name} (${sizeMb}MB) — 96MB를 넘어 업로드할 수 없습니다`;
+            dropZoneText.classList.add('text-critical-red');
+            updateDetectButton();
+            return;
         }
+
+        selectedFile = file;
+        dropZoneText.textContent = file.name;
+        dropZoneText.classList.remove('text-critical-red');
         updateDetectButton();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        acceptFile(e.target.files[0]);
     });
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
@@ -185,11 +206,7 @@
     });
 
     dropZone.addEventListener('drop', (e) => {
-        if (e.dataTransfer.files.length) {
-            selectedFile = e.dataTransfer.files[0];
-            dropZoneText.textContent = selectedFile.name;
-        }
-        updateDetectButton();
+        acceptFile(e.dataTransfer.files[0]);
     });
 
     videoUrlInput.addEventListener('input', updateDetectButton);
