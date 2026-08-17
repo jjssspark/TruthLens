@@ -59,7 +59,14 @@ def create_app(config_overrides=None):
         app.logger.exception("처리되지 않은 예외", extra={"event": "request.failed"})
 
         if request.path.startswith('/api/'):
-            return fail("INTERNAL_ERROR", "서버 오류가 발생했습니다.", 500)
+            # 예외 클래스 이름까지는 응답에 담는다. 이것만으로 어느 계층이
+            # 터졌는지(DB·메모리·외부 API) 갈리는데, 클래스 이름에는 내부 값이나
+            # 경로가 없다. 메시지와 스택은 계속 로그에만 남긴다.
+            return fail(
+                "INTERNAL_ERROR",
+                f"서버 오류가 발생했습니다. ({type(e).__name__})",
+                500,
+            )
         return "서버 오류가 발생했습니다.", 500
 
     # 없는 테이블만 만든다. 예전에는 SQLite일 때만 돌렸는데, 배포 DB를 외부
