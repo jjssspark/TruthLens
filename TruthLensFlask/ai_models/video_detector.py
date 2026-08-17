@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
@@ -114,27 +115,43 @@ class VideoDetector(BaseDetector):
         step = max(1, len(frames) // MAX_MODEL_FRAMES)
         targets = frames[::step][:MAX_MODEL_FRAMES]
 
-        results = []
+        payloads = []
         for timestamp_sec, frame_bgr in targets:
             ok, buffer = cv2.imencode('.jpg', frame_bgr)
             if not ok:
                 logger.warning("프레임 JPEG 인코딩 실패", extra={"event": "video.frame.encode_failed"})
                 continue
-            try:
-                fake_percent = client.fake_percent(buffer.tobytes())
-            except HFInferenceError as e:
-                # 한 프레임이라도 실패하면 통째로 휴리스틱으로 돌아간다.
-                # 일부만 모델 판정인 혼합 결과는 해석할 수 없다.
-                logger.warning("딥페이크 모델 호출 실패, 로컬 휴리스틱으로 폴백합니다: %s", e,
-                               extra={"event": "video.model.fallback"})
-                return None, METHOD_HEURISTIC, None
-            results.append({
+            payloads.append((timestamp_sec, buffer.tobytes()))
+
+        # 프레임마다 왕복 1회라 순차로 돌면 대기가 프레임 수만큼 곱해진다
+        # (실측 8프레임 19.6초 — gunicorn 기본 타임아웃 30초에 걸린다). 동시에 쏜다.
+        # 이 메서드는 flask.session이나 db.session을 건드리지 않아 스레드에서 안전하다.
+        with ThreadPoolExecutor(max_workers=len(payloads) or 1) as pool:
+            futures = [pool.submit(client.fake_percent, payload) for _, payload in payloads]
+
+            scores = []
+            for future in futures:
+                try:
+                    scores.append(future.result())
+                except HFInferenceError as e:
+                    # 한 프레임이라도 실패하면 통째로 휴리스틱으로 돌아간다.
+                    # 일부만 모델 판정인 혼합 결과는 해석할 수 없다.
+                    logger.warning("딥페이크 모델 호출 실패, 로컬 휴리스틱으로 폴백합니다: %s", e,
+                                   extra={"event": "video.model.fallback"})
+                    return None, METHOD_HEURISTIC, None
+
+        # futures를 제출 순서대로 읽으므로 프레임 순서가 그대로 유지된다.
+        # as_completed로 받으면 완료 순서가 섞여 frame_highlights의 시각이 어긋난다.
+        results = [
+            {
                 "timestamp_sec": timestamp_sec,
                 "ai_percent": fake_percent,
                 # 모델은 프레임별 신뢰도를 따로 주지 않는다. 판정이 0.5에서
                 # 멀수록 확신이 크다고 보고 0~100으로 환산한다.
                 "confidence": round(abs(fake_percent - 50) * 2, 1),
-            })
+            }
+            for (timestamp_sec, _), fake_percent in zip(payloads, scores)
+        ]
 
         if not results:
             return None, METHOD_HEURISTIC, None

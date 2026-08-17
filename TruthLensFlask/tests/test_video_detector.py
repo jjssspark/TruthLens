@@ -1,4 +1,5 @@
 import json
+import time
 
 import cv2
 import numpy as np
@@ -27,6 +28,68 @@ def _static_frames(count, size=(64, 64)):
     """모든 프레임이 동일 — 보간/합성 의심 신호(시간적 일관성 이상)를 흉내낸다."""
     base = np.full((size[1], size[0], 3), 128, dtype=np.uint8)
     return [base.copy() for _ in range(count)]
+
+
+def test_model_frames_are_classified_concurrently_in_timestamp_order(monkeypatch):
+    """프레임 판정을 동시에 실행하되 결과는 타임스탬프 순서를 지킨다.
+
+    순차로 돌면 프레임 8개 × 최대 20초라 gunicorn 타임아웃(30초)을 넘겨 워커가
+    중단된다(실측 19.6초). 동시 실행은 완료 순서가 뒤섞이므로 순서를 되돌려야
+    frame_highlights의 시각이 맞는다.
+    """
+    import ai_models.video_detector as vd
+
+    call_count = []
+
+    class _StubClient:
+        model = 'stub-model'
+
+        def fake_percent(self, payload):
+            call_count.append(payload)
+            # 나중에 보낸 프레임이 먼저 끝나도록 지연을 뒤집는다
+            time.sleep(0.05 * (4 - len(call_count)))
+            return 10.0 * len(call_count)
+
+    monkeypatch.setattr(vd.HFDeepfakeClient, 'from_env', staticmethod(lambda: _StubClient()))
+
+    frames = [(float(i), np.full((64, 64, 3), i * 10, dtype=np.uint8)) for i in range(4)]
+
+    started = time.time()
+    results, method, model = VideoDetector()._classify_with_model(frames)
+    elapsed = time.time() - started
+
+    assert method == vd.METHOD_MODEL
+    assert [r["timestamp_sec"] for r in results] == [0.0, 1.0, 2.0, 3.0]
+    # 순차라면 0.15+0.10+0.05+0.0 = 0.30초. 동시 실행이면 가장 느린 하나에 수렴한다.
+    assert elapsed < 0.28
+
+
+def test_model_failure_on_any_frame_still_falls_back_to_heuristic(monkeypatch):
+    """한 프레임이라도 실패하면 통째로 휴리스틱으로 돌아간다(기존 동작 유지).
+
+    일부만 모델 판정인 혼합 결과는 해석할 수 없다.
+    """
+    import ai_models.video_detector as vd
+
+    class _FlakyClient:
+        model = 'stub-model'
+        seen = 0
+
+        def fake_percent(self, payload):
+            _FlakyClient.seen += 1
+            if _FlakyClient.seen == 2:
+                raise vd.HFInferenceError("추론 API가 HTTP 503를 반환했습니다")
+            return 42.0
+
+    monkeypatch.setattr(vd.HFDeepfakeClient, 'from_env', staticmethod(lambda: _FlakyClient()))
+
+    frames = [(float(i), np.full((64, 64, 3), 7, dtype=np.uint8)) for i in range(4)]
+
+    results, method, model = VideoDetector()._classify_with_model(frames)
+
+    assert results is None
+    assert method == vd.METHOD_HEURISTIC
+    assert model is None
 
 
 def test_detect_returns_expected_schema_for_real_video(tmp_path):
