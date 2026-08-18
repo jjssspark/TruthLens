@@ -14,8 +14,10 @@ from backend.logging_config import configure_logging
 from backend.models.database import db
 
 # /health·/ready는 외부 모니터링이 찌르는 곳이라 로그인 뒤에 두면 안 된다.
+# /diagnostics도 마찬가지다 — 배포가 반영됐는지 확인하려고 여는 곳인데
+# 로그인을 요구하면 정작 뭔가 잘못됐을 때 못 본다. 비밀값은 담지 않는다.
 # 로그인으로 리다이렉트되면 모니터링이 302/200을 받아 장애를 놓친다.
-_PUBLIC_PREFIXES = ('/login', '/auth/', '/static/', '/health', '/ready')
+_PUBLIC_PREFIXES = ('/login', '/auth/', '/static/', '/health', '/ready', '/diagnostics')
 
 
 def create_app(config_overrides=None):
