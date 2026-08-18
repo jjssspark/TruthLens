@@ -31,8 +31,10 @@ SUSPICIOUS_FRAME_THRESHOLD = 65
 # 하나에 수렴하지만, 쿼터를 감안해 상한을 둔다(실측 6프레임 × 3모델 = 18콜 3.5초).
 MAX_MODEL_FRAMES = 6
 
-# 동시에 떠 있는 추론 요청 수 상한. 위 주석 참고.
-MAX_INFLIGHT_CALLS = 6
+# 호출 하나의 상한. 기본값 20초를 쓰면 안 된다 — 앞단 프록시가 60초에서 끊는데,
+# 느린 호출 하나가 20초를 다 쓰면 남은 예산이 순식간에 사라진다.
+# 정상 호출은 0.5~1.6초, 콜드 스타트가 4초다(실측). 12초면 충분히 넉넉하다.
+MODEL_CALL_TIMEOUT_SEC = 12
 
 METHOD_MODEL = "hf-model"
 METHOD_ENSEMBLE = "hf-ensemble"
@@ -152,17 +154,18 @@ class VideoDetector(BaseDetector):
         if not payloads:
             return None, METHOD_HEURISTIC, None
 
-        # 순차로 돌면 왕복 대기가 호출 수만큼 곱해진다(실측 8프레임 19.6초 —
-        # gunicorn 기본 타임아웃 30초에 걸린다). 그래서 프레임도 동시에 쏜다.
+        # 프레임 × 모델을 전부 한 파도로 동시에 쏜다. 그래야 전체 대기가 가장
+        # 느린 호출 하나에 수렴한다.
         #
-        # 다만 전부 한꺼번에 쏘면 안 된다. 6프레임 × 3모델 = 18개를 동시에 보내면
-        # HF가 20초 read timeout을 낸다(실측 18콜 중 2~5개 실패). 콜 하나는
-        # 원래 0.5~1.6초다. 모델당 2개 이하로 유지해 폭주를 막는다.
+        # 한때 동시 실행을 6개로 제한했다가 배포본에서 66.9초가 나왔다. 프레임을
+        # 2개씩 3파도로 나눠 보내는 셈이라, 파도마다 타임아웃에 걸리면 대기가
+        # 3배로 곱해진다. 앞단 프록시가 60초에서 끊어 JSON이 아닌 HTML이 돌아왔다.
+        # 나눠 보내면 최악이 곱해지고, 한 번에 쏘면 최악이 호출 하나로 묶인다.
         # 이 메서드는 flask.session이나 db.session을 건드리지 않아 스레드에서 안전하다.
-        frame_workers = max(1, MAX_INFLIGHT_CALLS // len(models))
-        with ThreadPoolExecutor(max_workers=min(frame_workers, len(payloads))) as pool:
+        with ThreadPoolExecutor(max_workers=len(payloads)) as pool:
             futures = [
-                pool.submit(collect_model_scores, token, models, payload)
+                pool.submit(collect_model_scores, token, models, payload,
+                            MODEL_CALL_TIMEOUT_SEC)
                 for _, payload in payloads
             ]
             per_frame_scores = [future.result() for future in futures]

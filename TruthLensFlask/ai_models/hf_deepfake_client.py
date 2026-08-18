@@ -90,16 +90,18 @@ class HFDeepfakeClient:
         raise HFInferenceError(f"'가짜' 라벨을 찾지 못했습니다. 받은 라벨: {labels}")
 
 
-def collect_model_scores(token, models, payload):
+def collect_model_scores(token, models, payload, timeout=20):
     """모델들을 동시에 호출해 성공한 것만 {모델명: 점수}로 모은다.
 
     하나가 죽어도 나머지로 판정한다. 순차 호출하면 대기 시간이 모델 수만큼
     늘어나므로 동시에 쏜다.
+
+    timeout은 호출 하나의 상한이다. 영상은 프레임 수만큼 곱해지므로 더 짧게 준다.
     """
     scores = {}
     with ThreadPoolExecutor(max_workers=len(models)) as pool:
         futures = {
-            pool.submit(HFDeepfakeClient(token, model).fake_percent, payload): model
+            pool.submit(HFDeepfakeClient(token, model, timeout).fake_percent, payload): model
             for model in models
         }
         for future in as_completed(futures):

@@ -20,7 +20,10 @@ const TruthLens = {
       try {
         json = JSON.parse(xhr.responseText);
       } catch (err) {
-        if (onError) onError({ message: '서버 응답을 해석할 수 없습니다.' });
+        // 상태 코드를 반드시 함께 보여준다. 이 문구만으로는 원인을 하나도 알 수
+        // 없어서 같은 화면을 놓고 세 번(타임아웃/메모리/업로드 제한) 헤맸다.
+        // 413이면 파일이 큰 것, 502·504면 앞단 프록시가 끊은 것이다.
+        if (onError) onError({ message: `서버 응답을 해석할 수 없습니다. (HTTP ${xhr.status})` });
         return;
       }
       if (xhr.status >= 200 && xhr.status < 300) {
