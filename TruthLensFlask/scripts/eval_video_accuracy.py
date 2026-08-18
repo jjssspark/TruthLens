@@ -9,6 +9,9 @@
 세 방식을 같은 프레임에 나란히 돌린다. 프레임 샘플링은 한 번만 하므로
 방식 간 비교가 공정하다.
 
+기본은 로컬 추론(--backend local)이다. 추론 API를 쓰면 영상 40개에 720회를
+쏘게 되고, 그러다 월간 크레딧이 말라 서비스가 휴리스틱으로 떨어진다.
+
     ensemble   지금 쓰는 방식. AI 생성 탐지 3모델 중앙값 → 프레임 중앙값
     deepfake   교체 전 방식. 얼굴 조작 탐지기 평균 * 0.8 + 시간적 일관성 * 0.2
     heuristic  토큰이 없을 때의 폴백. 로컬 픽셀 휴리스틱 중앙값
@@ -54,7 +57,7 @@ def _video_files(directory):
     )
 
 
-def _score_one(path, token, detector):
+def _score_one(path, token, detector, ensemble=None):
     """한 영상에서 프레임을 한 번만 뽑아 세 방식으로 각각 채점한다."""
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
@@ -77,28 +80,32 @@ def _score_one(path, token, detector):
 
     scores = {"heuristic": round(statistics.median(heuristic), 1)}
 
-    if token:
-        per_frame = []
-        for blob in blobs:
+    per_frame = []
+    old_frames = []
+    for blob in blobs:
+        if ensemble is not None:
+            # 한 번에 다 받아서 나눈다. 교체 전 모델이 앙상블 중앙값에 섞이면 안 된다.
+            got = ensemble.fake_percents(blob)
+            old_score = got.pop(OLD_DEEPFAKE_MODEL, None)
+        elif token:
             got = collect_model_scores(token, IMAGE_ENSEMBLE_MODELS, blob, timeout=20)
-            if got:
-                per_frame.append(statistics.median(got.values()))
-        scores["ensemble"] = round(statistics.median(per_frame), 1) if per_frame else None
-
-        old = []
-        for blob in blobs:
             try:
-                old.append(HFDeepfakeClient(token, OLD_DEEPFAKE_MODEL).fake_percent(blob))
+                old_score = HFDeepfakeClient(token, OLD_DEEPFAKE_MODEL).fake_percent(blob)
             except HFInferenceError:
-                pass
-        scores["deepfake"] = (
-            round(float(np.mean(old)) * 0.8 + temporal["temporal_ai_score"] * 0.2, 1)
-            if old else None
-        )
-    else:
-        scores["ensemble"] = None
-        scores["deepfake"] = None
+                old_score = None
+        else:
+            got, old_score = {}, None
 
+        if got:
+            per_frame.append(statistics.median(got.values()))
+        if old_score is not None:
+            old_frames.append(old_score)
+
+    scores["ensemble"] = round(statistics.median(per_frame), 1) if per_frame else None
+    scores["deepfake"] = (
+        round(float(np.mean(old_frames)) * 0.8 + temporal["temporal_ai_score"] * 0.2, 1)
+        if old_frames else None
+    )
     return scores
 
 
@@ -129,10 +136,20 @@ def main():
     parser.add_argument("--ai", required=True, help="AI로 생성한 영상이 든 폴더")
     parser.add_argument("--real", required=True, help="실제 촬영한 영상이 든 폴더")
     parser.add_argument("--out", default=str(ROOT.parent / "output" / "video_eval"))
+    parser.add_argument("--backend", choices=("local", "api"), default="local",
+                        help="local은 이 컴퓨터에서 모델을 돌린다(횟수 제한 없음). "
+                             "api는 HF 추론 API를 쓴다(크레딧 소모).")
     args = parser.parse_args()
 
     token = (os.getenv("HF_TOKEN") or "").strip()
-    if not token:
+    ensemble = None
+    if args.backend == "local":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from local_inference import LocalEnsemble
+
+        print("모델을 로컬에 올립니다(첫 실행은 내려받느라 오래 걸립니다)...", file=sys.stderr)
+        ensemble = LocalEnsemble(models=IMAGE_ENSEMBLE_MODELS + (OLD_DEEPFAKE_MODEL,))
+    elif not token:
         print("HF_TOKEN이 없어 로컬 휴리스틱만 측정합니다.", file=sys.stderr)
 
     detector = VideoDetector()
@@ -142,7 +159,7 @@ def main():
         if not files:
             print(f"{directory}에 영상이 없습니다.", file=sys.stderr)
         for path in files:
-            scores = _score_one(path, token, detector)
+            scores = _score_one(path, token, detector, ensemble)
             if scores is None:
                 print(f"  건너뜀(열 수 없음): {path.name}", file=sys.stderr)
                 continue
