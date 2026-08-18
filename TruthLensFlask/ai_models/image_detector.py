@@ -3,18 +3,13 @@ import io
 import logging
 import os
 import statistics
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cv2
 import numpy as np
 import piexif
 from PIL import Image
 from ai_models.base_detector import BaseDetector
-from ai_models.hf_deepfake_client import (
-    IMAGE_ENSEMBLE_MODELS,
-    HFDeepfakeClient,
-    HFInferenceError,
-)
+from ai_models.hf_deepfake_client import IMAGE_ENSEMBLE_MODELS, collect_model_scores
 from ai_models.pixel_heuristics import analyze_pixel_patterns
 
 logger = logging.getLogger(__name__)
@@ -79,7 +74,7 @@ class ImageDetector(BaseDetector):
         override = os.getenv("HF_IMAGE_MODEL")
         models = (override,) if override else IMAGE_ENSEMBLE_MODELS
 
-        scores = self._collect_model_scores(token, models, payload)
+        scores = collect_model_scores(token, models, payload)
         if not scores:
             return None, METHOD_HEURISTIC, None
 
@@ -96,30 +91,6 @@ class ImageDetector(BaseDetector):
             METHOD_MODEL if override else METHOD_ENSEMBLE,
             ", ".join(scores),
         )
-
-    @staticmethod
-    def _collect_model_scores(token, models, payload):
-        """모델들을 동시에 호출해 성공한 것만 {모델명: 점수}로 모은다.
-
-        하나가 죽어도 나머지로 판정한다. 순차 호출하면 대기 시간이 모델 수만큼
-        늘어나므로 동시에 쏜다.
-        """
-        scores = {}
-        with ThreadPoolExecutor(max_workers=len(models)) as pool:
-            futures = {
-                pool.submit(HFDeepfakeClient(token, model).fake_percent, payload): model
-                for model in models
-            }
-            for future in as_completed(futures):
-                model = futures[future]
-                try:
-                    scores[model] = future.result()
-                except HFInferenceError as e:
-                    logger.warning("이미지 판별 모델 호출 실패(%s): %s", model, e,
-                                   extra={"event": "image.model.fallback"})
-        # dict는 삽입 순서를 유지하는데 완료 순서라 매번 달라진다. 요약 문구가
-        # 호출마다 바뀌지 않도록 지정한 순서로 되돌린다.
-        return {model: scores[model] for model in models if model in scores}
 
     def _analyze_exif(self, file_path):
         """EXIF 메타데이터 추출

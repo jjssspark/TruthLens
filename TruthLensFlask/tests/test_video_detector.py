@@ -1,11 +1,13 @@
 import json
 import time
+from unittest.mock import patch
 
 import cv2
 import numpy as np
 import pytest
 
 import ai_models.video_detector as vd_module
+from ai_models.hf_deepfake_client import HFDeepfakeClient, HFInferenceError
 from ai_models.video_detector import VideoDetector
 
 
@@ -65,32 +67,31 @@ def test_small_frames_are_not_upscaled(tmp_path):
 
 
 def test_model_frames_are_classified_concurrently_in_timestamp_order(monkeypatch):
-    """프레임 판정을 동시에 실행하되 결과는 타임스탬프 순서를 지킨다.
+    """프레임 × 모델 호출을 동시에 실행하되 결과는 타임스탬프 순서를 지킨다.
 
-    순차로 돌면 프레임 8개 × 최대 20초라 gunicorn 타임아웃(30초)을 넘겨 워커가
-    중단된다(실측 19.6초). 동시 실행은 완료 순서가 뒤섞이므로 순서를 되돌려야
+    순차로 돌면 왕복 대기가 호출 수만큼 곱해져 gunicorn 타임아웃에 걸린다
+    (실측 8프레임 19.6초). 동시 실행은 완료 순서가 뒤섞이므로 순서를 되돌려야
     frame_highlights의 시각이 맞는다.
     """
     import ai_models.video_detector as vd
 
-    call_count = []
+    monkeypatch.setenv('HF_TOKEN', 'hf_test-token')
+    monkeypatch.setenv('HF_DEEPFAKE_MODEL', 'stub-model')  # 단일 모델로 지연을 단순화
 
-    class _StubClient:
-        model = 'stub-model'
+    calls = []
 
-        def fake_percent(self, payload):
-            call_count.append(payload)
-            # 나중에 보낸 프레임이 먼저 끝나도록 지연을 뒤집는다
-            time.sleep(0.05 * (4 - len(call_count)))
-            return 10.0 * len(call_count)
-
-    monkeypatch.setattr(vd.HFDeepfakeClient, 'from_env', staticmethod(lambda: _StubClient()))
+    def _slow(self, image_bytes):
+        calls.append(image_bytes)
+        # 나중에 보낸 프레임이 먼저 끝나도록 지연을 뒤집는다
+        time.sleep(0.05 * (4 - len(calls)))
+        return 10.0 * len(calls)
 
     frames = [(float(i), np.full((64, 64, 3), i * 10, dtype=np.uint8)) for i in range(4)]
 
-    started = time.time()
-    results, method, model = VideoDetector()._classify_with_model(frames)
-    elapsed = time.time() - started
+    with patch.object(HFDeepfakeClient, 'fake_percent', autospec=True, side_effect=_slow):
+        started = time.time()
+        results, method, model = VideoDetector()._classify_with_model(frames)
+        elapsed = time.time() - started
 
     assert method == vd.METHOD_MODEL
     assert [r["timestamp_sec"] for r in results] == [0.0, 1.0, 2.0, 3.0]
@@ -98,28 +99,21 @@ def test_model_frames_are_classified_concurrently_in_timestamp_order(monkeypatch
     assert elapsed < 0.28
 
 
-def test_model_failure_on_any_frame_still_falls_back_to_heuristic(monkeypatch):
-    """한 프레임이라도 실패하면 통째로 휴리스틱으로 돌아간다(기존 동작 유지).
+def test_falls_back_to_heuristic_when_every_model_call_fails(monkeypatch):
+    """모든 호출이 실패해야 휴리스틱으로 돌아간다.
 
-    일부만 모델 판정인 혼합 결과는 해석할 수 없다.
+    일부 실패는 남은 모델로 판정한다 — test_video_model.py 참고.
     """
     import ai_models.video_detector as vd
 
-    class _FlakyClient:
-        model = 'stub-model'
-        seen = 0
-
-        def fake_percent(self, payload):
-            _FlakyClient.seen += 1
-            if _FlakyClient.seen == 2:
-                raise vd.HFInferenceError("추론 API가 HTTP 503를 반환했습니다")
-            return 42.0
-
-    monkeypatch.setattr(vd.HFDeepfakeClient, 'from_env', staticmethod(lambda: _FlakyClient()))
+    monkeypatch.setenv('HF_TOKEN', 'hf_test-token')
+    monkeypatch.delenv('HF_DEEPFAKE_MODEL', raising=False)
 
     frames = [(float(i), np.full((64, 64, 3), 7, dtype=np.uint8)) for i in range(4)]
 
-    results, method, model = VideoDetector()._classify_with_model(frames)
+    with patch.object(HFDeepfakeClient, 'fake_percent',
+                      side_effect=HFInferenceError("추론 API가 HTTP 503를 반환했습니다")):
+        results, method, model = VideoDetector()._classify_with_model(frames)
 
     assert results is None
     assert method == vd.METHOD_HEURISTIC
@@ -148,14 +142,41 @@ def test_detect_returns_expected_schema_for_real_video(tmp_path):
     json.dumps(result)
 
 
-def test_detect_flags_static_frames_as_suspicious(tmp_path):
-    """프레임 간 변화가 전혀 없는 영상은 시간적 일관성 이상으로 점수가 높아져야 한다 (FR-01)"""
+def test_temporal_consistency_does_not_change_score(tmp_path, monkeypatch):
+    """시간적 일관성은 점수를 바꾸지 않고 참고 문구로만 남는다.
+
+    임계값(std > mean*1.5 -> 55점)에 근거가 없어 지극히 정상인 12초 클립도
+    "합성 경계 의심 55점"을 받았다. 근거 없는 상수가 판정을 흔들면 안 된다.
+    """
     video_path = tmp_path / "static.avi"
     _write_video(video_path, _static_frames(30))
 
-    result = VideoDetector().detect(str(video_path))
+    monkeypatch.setenv('HF_TOKEN', 'hf_test-token')
+    monkeypatch.delenv('HF_DEEPFAKE_MODEL', raising=False)
 
-    assert result["details"]["temporal_consistency"] == "프레임 간 변화가 지나치게 적어 보간/합성이 의심됩니다."
+    with patch.object(HFDeepfakeClient, 'fake_percent', return_value=10.0):
+        result = VideoDetector().detect(str(video_path))
+
+    # 프레임이 전부 동일해 "보간/합성 의심"이 뜬다(옛 가중치로는 +21점)
+    assert "보간/합성이 의심" in result["details"]["temporal_consistency"]
+    # 그래도 점수는 모델 판정 그대로다
+    assert result["score"] == 10.0
+
+
+def test_sample_frames_returns_the_requested_count(tmp_path):
+    """요청한 만큼 샘플링한다.
+
+    마지막 인덱스(total-1)로 seek하면 읽기가 실패해 한 장씩 모자랐다
+    (16 요청 -> 15장, 8 요청 -> 7장).
+    """
+    video_path = tmp_path / "many.avi"
+    _write_video(video_path, _random_frames(120))
+
+    capture = cv2.VideoCapture(str(video_path))
+    frames = VideoDetector()._sample_frames(capture)
+    capture.release()
+
+    assert len(frames) == vd_module.MAX_SAMPLED_FRAMES
 
 
 def test_detect_samples_at_most_max_frames(tmp_path):

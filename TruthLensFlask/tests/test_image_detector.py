@@ -6,7 +6,6 @@ import pytest
 from PIL import Image
 
 from ai_models.hf_deepfake_client import (
-    DEFAULT_MODEL,
     IMAGE_DEFAULT_MODEL,
     IMAGE_ENSEMBLE_MODELS,
     HFDeepfakeClient,
@@ -264,14 +263,6 @@ def test_falls_back_when_model_call_fails(detector, tmp_path, monkeypatch):
     assert details["method"] == METHOD_HEURISTIC
     assert details["model"] is None
     assert "로컬 휴리스틱" in details["summary"]
-
-
-def test_image_model_differs_from_video_model():
-    """이미지는 'AI 생성 탐지', 영상은 '얼굴 조작 탐지'로 서로 다른 문제를 푼다.
-
-    같은 모델을 쓰면 생성 이미지를 진본으로 판정한다(실측으로 확인한 회귀).
-    """
-    assert IMAGE_DEFAULT_MODEL != DEFAULT_MODEL
 
 
 # --- 앙상블: 세 모델 다수결 ---
