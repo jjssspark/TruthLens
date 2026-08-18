@@ -112,4 +112,8 @@ MariaDB+Redis 조합이 필요하면 `--profile full`로 바꿉니다.
 
 ---
 
-자세한 기록은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)에 있습니다.
+자세한 기록은 아래에 있습니다.
+
+- [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — 버그·장애 28건
+- [`ADR.md`](ADR.md) — 설계 결정 10건
+- [`RETROSPECTIVE.md`](RETROSPECTIVE.md) — 회고
