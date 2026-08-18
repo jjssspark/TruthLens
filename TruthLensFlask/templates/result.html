@@ -194,7 +194,15 @@
             <h3 class="font-title-md text-title-md text-deep-navy mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">movie_filter</span>
                 영상 AI 생성 분석
+                <span class="px-2 py-0.5 bg-suspicious-yellow/15 text-suspicious-yellow rounded-full font-label-mono text-label-mono uppercase">실험적</span>
             </h3>
+            {% if d.get('reliability_note') %}
+            <!-- 점수만 보여주면 근거 없는 확신을 준다. 얼마나 믿을지도 같이 준다. -->
+            <div class="mb-4 p-3 rounded-lg bg-suspicious-yellow/10 border border-suspicious-yellow/30 flex gap-2">
+                <span class="material-symbols-outlined text-suspicious-yellow text-body-md">warning</span>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">{{ d.get('reliability_note') }}</p>
+            </div>
+            {% endif %}
             <div class="flex items-center gap-2 mb-4">
                 <span class="font-label-mono text-label-mono text-on-surface-variant uppercase">AI 생성 탐지</span>
                 {% if d.get('is_deepfake') %}

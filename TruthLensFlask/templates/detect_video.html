@@ -17,7 +17,17 @@
 {% block content %}
 <div class="mb-4">
     <h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tight text-deep-navy">영상 분석</h2>
-    <p class="text-on-surface-variant font-body-sm mt-1">딥페이크 탐지, 시간적 결함 분석을 위한 영상을 업로드하거나 직접 링크된 영상 URL을 입력하세요.</p>
+    <p class="text-on-surface-variant font-body-sm mt-1">분석할 영상을 업로드하거나 직접 링크된 영상 URL을 입력하세요.</p>
+    <!-- 올리기 전에 알려준다. 결과를 보고 나서 "사실 못 믿는다"고 하면 늦다. -->
+    <div class="mt-3 p-3 rounded-lg bg-suspicious-yellow/10 border border-suspicious-yellow/30 flex gap-2">
+        <span class="material-symbols-outlined text-suspicious-yellow text-body-md">science</span>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">
+            <strong>실험적 기능</strong> — 공개 데이터셋 27개로 잰 정확도가 37%입니다.
+            무조건 &lsquo;진본&rsquo;이라고 답할 때(55.6%)보다 낮습니다.
+            프레임을 각각 사진으로 보는 방식이라 영상의 시간 정보를 쓰지 못하는 것이 한계입니다.
+            결과는 참고용으로만 보세요.
+        </p>
+    </div>
     <div class="mt-4 flex items-center gap-2 px-4 py-3 bg-secondary-container/10 border border-secondary-container/20 rounded-lg">
         <span class="material-symbols-outlined text-secondary text-[20px]">info</span>
         <p class="text-body-sm text-on-surface">프레임 샘플링 기반 로컬 휴리스틱 분석입니다(외부 API 미사용). YouTube/Vimeo 페이지 링크는 아직 지원되지 않으며, 직접 링크된 영상 파일(.mp4 등) 또는 파일 업로드를 이용해 주세요.</p>

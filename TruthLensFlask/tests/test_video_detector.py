@@ -207,3 +207,43 @@ def test_detect_returns_error_result_for_corrupted_file(tmp_path):
 
     assert result["score"] == 0.0
     assert "error" in result["details"]
+
+
+def test_result_carries_reliability_warning(tmp_path):
+    """영상 결과는 점수와 함께 '이걸 얼마나 믿을 수 있는지'를 같이 준다.
+
+    실측 정확도가 37%로 기준선(무조건 "진본" 55.6%)보다 낮다. 점수만 내려보내면
+    근거 없는 확신을 주게 된다. 이 표시가 조용히 사라지면 안 된다.
+    """
+    video_path = tmp_path / "sample.avi"
+    _write_video(video_path, _random_frames(30))
+
+    details = VideoDetector().detect(str(video_path))["details"]
+
+    assert details["experimental"] is True
+    assert str(vd_module.MEASURED_ACCURACY) in details["reliability_note"]
+    assert str(vd_module.BASELINE_ACCURACY) in details["reliability_note"]
+    assert details["summary"].startswith("[실험적]")
+
+
+def test_error_result_also_carries_reliability_warning(tmp_path):
+    """실패했을 때도 같은 키를 채운다. 템플릿이 키를 찾다 비면 안 된다."""
+    details = VideoDetector().detect(str(tmp_path / "없는파일.mp4"))["details"]
+
+    assert details["experimental"] is True
+    assert details["reliability_note"]
+
+
+def test_summary_avoids_claiming_probability(tmp_path, monkeypatch):
+    """정확도 37%로는 "가능성이 높다"고 말할 수 없다. 본 것만 말한다."""
+    video_path = tmp_path / "sample.avi"
+    _write_video(video_path, _random_frames(30))
+
+    monkeypatch.setenv('HF_TOKEN', 'hf_test-token')
+    monkeypatch.delenv('HF_DEEPFAKE_MODEL', raising=False)
+
+    with patch.object(HFDeepfakeClient, 'fake_percent', return_value=95.0):
+        summary = VideoDetector().detect(str(video_path))["details"]["summary"]
+
+    assert "가능성이 높습니다" not in summary
+    assert "AI 생성 신호가 감지되었습니다" in summary

@@ -36,6 +36,19 @@ MAX_MODEL_FRAMES = 6
 # 정상 호출은 0.5~1.6초, 콜드 스타트가 4초다(실측). 12초면 충분히 넉넉하다.
 MODEL_CALL_TIMEOUT_SEC = 12
 
+# 실측 정확도. 공개 데이터셋 27개(AI 12 / 실촬영 15)로 잰 값이다(TS-26).
+# 무조건 "진본"이라고 답하면 55.6%가 나온다. 즉 이 기능은 기준선보다 못하다.
+#
+# 이 숫자를 결과에 실어 화면까지 내려보낸다. 근거 없는 확신을 주지 않으려면
+# 점수만 보여줘서는 안 되고, 그 점수를 얼마나 믿을지도 같이 줘야 한다.
+MEASURED_ACCURACY = 37.0
+BASELINE_ACCURACY = 55.6
+RELIABILITY_NOTE = (
+    f"실험적 기능입니다. 공개 데이터셋 27개로 잰 정확도가 {MEASURED_ACCURACY}%로, "
+    f"무조건 '진본'이라고 답할 때({BASELINE_ACCURACY}%)보다 낮습니다. "
+    "아래 점수는 참고용이며 판단 근거로 쓰기에 부족합니다."
+)
+
 METHOD_MODEL = "hf-model"
 METHOD_ENSEMBLE = "hf-ensemble"
 METHOD_HEURISTIC = "local-heuristic"
@@ -115,6 +128,9 @@ class VideoDetector(BaseDetector):
                 "pixel_ai_percent": pixel_ai_percent,
                 "temporal_consistency": temporal["note"],
                 "confidence": confidence,
+                # 이 기능을 얼마나 믿을지는 사용자가 정한다. 그러려면 근거를 줘야 한다.
+                "experimental": True,
+                "reliability_note": RELIABILITY_NOTE,
                 # 어떤 방식으로 판정했는지 반드시 노출한다.
                 # 휴리스틱 결과를 모델 결과처럼 보이게 하면 안 된다.
                 "method": method,
@@ -294,12 +310,14 @@ class VideoDetector(BaseDetector):
 
     def _make_summary(self, ai_percent, confidence, is_deepfake, sampled_frames,
                       method=METHOD_HEURISTIC, model_name=None):
+        # "가능성이 높습니다"는 확률을 주장하는 말이다. 정확도 37%로는 그런 말을
+        # 할 수 없다. 무엇을 봤는지만 말하고 결론은 사용자에게 남긴다.
         if is_deepfake:
-            verdict = "AI로 생성·조작된 영상일 가능성이 높습니다"
+            verdict = "AI 생성 신호가 감지되었습니다"
         elif ai_percent >= 40:
-            verdict = "일부 구간에서 이상 신호가 감지되었습니다"
+            verdict = "일부 구간에서 약한 신호가 감지되었습니다"
         else:
-            verdict = "실제 촬영 영상일 가능성이 높습니다"
+            verdict = "뚜렷한 AI 생성 신호는 감지되지 않았습니다"
 
         # 판정 방식을 요약문에도 정확히 적는다. details.method만 맞고 문구가
         # 어긋나면, 요약만 읽는 사용자는 여전히 잘못된 정보를 받는다.
@@ -308,7 +326,7 @@ class VideoDetector(BaseDetector):
         else:
             basis = f"프레임 {sampled_frames}개 기준 로컬 픽셀 휴리스틱 분석 (외부 모델 미사용)"
 
-        return f"{verdict} | AI 개입 {ai_percent}% | 신뢰도 {confidence}% | {basis}"
+        return f"[실험적] {verdict} | AI 개입 {ai_percent}% | 신뢰도 {confidence}% | {basis}"
 
     def _error_result(self, message):
         logger.warning("영상 분석 실패: %s", message)
@@ -317,6 +335,8 @@ class VideoDetector(BaseDetector):
             "details": {
                 "is_deepfake": False,
                 "frame_highlights": [],
+                "experimental": True,
+                "reliability_note": RELIABILITY_NOTE,
                 "error": message,
                 "summary": message,
             },
