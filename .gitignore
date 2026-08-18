@@ -42,3 +42,6 @@ node_modules/
 
 # 측정용 영상 데이터셋 (deepaction_v1 부분집합) — 용량이 커서 추적하지 않는다
 datasets/
+
+# macOS 잡파일
+.DS_Store
