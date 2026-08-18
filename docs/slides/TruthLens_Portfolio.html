@@ -626,10 +626,10 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     <span><b>DEPLOY</b> cloudtype.io</span>
   </div>
   <div class="stats" role="list" aria-label="핵심 지표">
-    <div class="stat"><span class="num">2,892</span><span class="label">Python 소스 라인 (backend · ai_models · tasks)</span></div>
-    <div class="stat"><span class="num">152</span><span class="label">테스트 케이스 · 2,130 라인</span></div>
-    <div class="stat"><span class="num">81%</span><span class="label">테스트 커버리지 (backend + ai_models)</span></div>
-    <div class="stat"><span class="num">19</span><span class="label">원인까지 적어둔 버그</span></div>
+    <div class="stat"><span class="num">3,515</span><span class="label">Python 소스 라인 (backend · ai_models · tasks)</span></div>
+    <div class="stat"><span class="num">178</span><span class="label">테스트 케이스 · 2,629 라인</span></div>
+    <div class="stat"><span class="num">82%</span><span class="label">테스트 커버리지 (backend + ai_models)</span></div>
+    <div class="stat"><span class="num">28</span><span class="label">원인까지 적어둔 버그</span></div>
   </div>
 </section>
 
@@ -705,11 +705,12 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   </div>
   <div class="grid g2 spread">
     <div class="card">
-      <h3>FR-01 영상은 두 가지 방식으로 돎</h3>
+      <h3>FR-01 영상을 실험적으로 표시한 이유</h3>
       <p>
-        <code>HF_TOKEN</code>이 있으면 Hugging Face 추론 API의 딥페이크 모델로 프레임을 보고,
-        없으면 OpenCV로 픽셀을 직접 계산하는 쪽으로 넘어감. 어느 쪽으로 나온 결과인지는
-        <code>details.method</code>(<code>hf-model</code> / <code>local-heuristic</code>)에 항상 찍힘.
+        <code>HF_TOKEN</code>이 있으면 프레임 6장을 뽑아 이미지 판별에 쓰는 모델 3개에 물어보고 중앙값을 쓰고,
+        없거나 다 실패하면 OpenCV로 픽셀을 직접 계산하는 쪽으로 넘어감. 어느 쪽으로 나온 결과인지는
+        <code>details.method</code>(<code>hf-ensemble</code> / <code>local-heuristic</code>)에 항상 찍힘.
+        만들고 나서 정확도를 재봤더니 낮게 나와서, 실측값을 결과에 같이 내려보내고 실험적 기능으로 표시함 — 05장에.
       </p>
     </div>
     <div class="card">
@@ -732,14 +733,14 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
       <table>
         <thead><tr><th>레이어</th><th>기술</th></tr></thead>
         <tbody>
-          <tr><td>Frontend</td><td>Jinja2 템플릿 · Tailwind(CDN) · Vanilla JS</td></tr>
+          <tr><td>Frontend</td><td>Jinja2 템플릿 · Tailwind CLI 빌드 CSS · Vanilla JS</td></tr>
           <tr><td>Backend</td><td>Flask 3 · Blueprint 8개 · Flask-SQLAlchemy</td></tr>
           <tr><td>이미지 · 영상</td><td>OpenCV(headless) · NumPy · Pillow · piexif</td></tr>
           <tr><td>뉴스</td><td>google-generativeai (Gemini)</td></tr>
-          <tr><td>논문</td><td>openai SDK (DeepSeek 호환) · pypdf · reportlab</td></tr>
+          <tr><td>논문</td><td>google-generativeai (Gemini) · pypdf · reportlab</td></tr>
           <tr><td>본문 추출</td><td>BeautifulSoup4 · lxml · requests</td></tr>
-          <tr><td>Database</td><td>MariaDB (PyMySQL) · 로컬 SQLite 폴백</td></tr>
-          <tr><td>Cache · Queue</td><td>Redis · Celery</td></tr>
+          <tr><td>Database</td><td>PostgreSQL(배포) · MariaDB(compose) · SQLite(로컬 기본)</td></tr>
+          <tr><td>Cache · Queue</td><td>Redis · Celery(구조만 있고 요청 경로엔 미적용)</td></tr>
           <tr><td>WSGI</td><td>Gunicorn · ProxyFix</td></tr>
         </tbody>
       </table>
@@ -979,7 +980,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
       <dl>
         <dt>문제</dt><dd>로그 찍는 곳마다 traceId를 챙겨 넘기라고 하면 어디선가 반드시 빠짐</dd>
         <dt>결정</dt><dd><code>X-Request-Id</code>를 <code>before_request</code>에서 받아두고 <code>logging.Filter</code>가 모든 로그에 알아서 붙이게 함</dd>
-        <dt>결과</dt><dd>로그가 JSON(<code>timestamp/level/message/traceId/service</code>)으로 나감. 비밀번호·토큰은 로거에서 강제로 가리고, 요청 컨텍스트가 없는 Celery 워커에서도 안 터짐</dd>
+        <dt>결과</dt><dd>로그가 JSON(<code>timestamp/level/message/traceId/service</code>)으로 나감. 비밀번호·토큰은 로거에서 강제로 가리고, 요청 컨텍스트가 없는 곳에서 호출해도 안 터짐</dd>
       </dl>
     </div>
     <div class="decision">
@@ -1083,6 +1084,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     </div>
   </div>
   <p class="foot">
+    성능 — 로그인 페이지 787KB → 34KB(Tailwind Play CDN을 CLI 빌드 CSS로 교체 + 이미지 내재화 + 압축), 뉴스 판별 16초 → 1.3초, 영상 판정 13.3초 → 6.1초<br>
     코드량 — 소스 3,515줄 · 테스트 2,629줄 · 화면(템플릿·JS·CSS) 3,391줄 · 측정 스크립트 291줄
   </p>
 </section>
@@ -1097,11 +1099,11 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
       <div class="flow" style="margin-top:12px;">
         <span class="step">dev</span><span class="arrow">→</span>
         <span class="step">qa</span><span class="arrow">→</span>
-        <span class="step hot">main · 자동 배포</span>
+        <span class="step hot">main · 재빌드</span>
       </div>
       <p class="note" style="margin-top:14px;">
-        클라우드타입(cloudtype.io)에 올림. Flask App(Gunicorn) · Celery Worker · MariaDB · Redis를
-        한 프로젝트 안에 두고 서비스명으로 서로 부르게 했고, GitHub 연동해서 푸시하면 알아서 빌드·배포됨.
+        클라우드타입(cloudtype.io)에 Flask App(Gunicorn)을 올리고, DB는 컨테이너 밖 상시 가동 PostgreSQL을 씀.
+        무료 플랜은 하루 한 번 강제로 멈추는데 DB까지 같은 플랜에 두면 깨울 대상이 둘로 늘어나서 밖으로 뺐음.
         프록시 뒤에 있으면 https URL이 http로 만들어지길래 <code>ProxyFix</code>를 붙임.
         키 같은 건 코드에 안 두고 플랫폼 환경 변수로 넣음.
       </p>
@@ -1116,23 +1118,23 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     <div>
       <h3>아직 못 한 것</h3>
       <ul class="plain" style="margin-top:12px;">
-        <li><b>영상 판별</b> — 27개로 재서 37%. 실험적 기능으로 표시해둠. 시공간 정보를 쓰는 연구는 많은데(DeMamba, UNITE, DeCoF) 바로 가져다 쓸 배포 가중치가 없고, 올라온 건 얼굴 바꿔치기용이라 푸는 문제가 다름. 제대로 하려면 직접 학습시켜야 함</li>
+        <li><b>영상 판별</b> — 27개로 재서 37%. 실험적으로 표시해둠. 시공간 모델 연구는 많은데(DeMamba, UNITE, DeCoF) 바로 쓸 배포 가중치가 없고, 올라온 건 얼굴 바꿔치기용이라 푸는 문제가 다름</li>
         <li><b>인용 교차 검증</b> — 본문이랑 참고문헌을 맞춰보는 부분, 빠진 인용을 찾아주는 부분은 아직 안 만들었음</li>
-        <li><b>Tailwind CDN</b> — 공식 문서가 실서비스에 쓰지 말라는 개발용 스크립트를 그냥 쓰고 있음. CLI 빌드로 바꾸려면 forms·container-queries 플러그인을 옮기고 폼이 안 깨지는지 봐야 함</li>
+        <li><b>이미지 여러 장</b> — 워커가 끊겨서 1장으로 막아둠. 초과분은 조용히 자르지 않고 <code>IMAGE_COUNT_EXCEEDED</code>로 거절함</li>
+        <li><b>프론트엔드 테스트</b> — 러너가 없어서, 프론트가 응답 형식을 잘못 읽던 버그를 백엔드 156건이 통과하는 동안 못 잡았음</li>
         <li><b>캐시</b> — 뉴스만 DB를 쓰고 있어서 TTL이나 무효화 규칙이 두 군데로 흩어져 있음</li>
       </ul>
       <h3 style="margin-top:24px;">다음에 할 것</h3>
       <ul class="plain" style="margin-top:12px;">
         <li>뉴스도 Redis로 옮겨서 캐시 규칙을 한 군데서 보게 하기</li>
         <li>인용 교차 검증 만들고 DOI로 메타데이터 찾아오기</li>
-        <li>Tailwind CLI 빌드로 바꿔서 CDN 떼기</li>
+        <li>프론트엔드 테스트 러너 붙이기</li>
         <li>영상은 시공간 모델을 직접 학습시키기. 데이터셋은 받아둠</li>
       </ul>
     </div>
   </div>
-  <blockquote class="quote" style="margin-top:32px;">
-    판별 결과를 얼마나 믿을지는 쓰는 사람이 정할 수 있어야 한다고 봄.
-    그래서 어떤 방식으로 나온 결과인지, 얼마나 맞히는지, 무엇이 아직 안 되는지를 숫자로 재서 화면과 문서에 그대로 적어둠.
+  <blockquote class="quote" style="margin-top:20px;">
+    이 결과를 얼마나 믿을지는 쓰는 사람이 정할 수 있어야 한다고 봄. 그래서 얼마나 맞히는지를 재서 화면에 그대로 적어둠.
   </blockquote>
 </section>
 
