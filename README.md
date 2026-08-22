@@ -16,6 +16,9 @@
 
 ![TruthLens 데모 — 이미지 업로드부터 AI 생성 판별 결과까지](docs/assets/truthlens-demo.gif)
 
+**시연용 계정** · 아이디 `1234@lens.com` / 비밀번호 `12345678`
+가입 없이 바로 눌러보시라고 열어둔 계정입니다. 직접 가입하셔도 됩니다.
+
 </div>
 
 ---
@@ -73,7 +76,7 @@ cp .env.example .env              # 기본값(SQLite)만으로 실행 가능
 python app.py                     # http://localhost:3000
 ```
 
-`/auth/email/signup`으로 가입 후 로그인하면 전체 기능을 쓸 수 있습니다. 인증은 이메일 · 비밀번호 방식만 지원합니다.
+`/auth/email/signup`으로 가입 후 로그인하면 전체 기능을 쓸 수 있습니다. 인증은 이메일 · 비밀번호 방식만 지원합니다. 라이브 데모는 시연용 계정(`1234@lens.com` / `12345678`)으로 바로 들어가실 수 있습니다.
 
 **Docker로 실행**
 
