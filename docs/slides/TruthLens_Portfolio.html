@@ -626,7 +626,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
     <span><b>DEPLOY</b> cloudtype.io</span>
   </div>
   <div class="stats" role="list" aria-label="핵심 지표">
-    <div class="stat"><span class="num">3,515</span><span class="label">Python 소스 라인 (backend · ai_models · tasks)</span></div>
+    <div class="stat"><span class="num">3,515</span><span class="label">Python 소스 라인 (backend · ai_models · cache · tasks · 진입점)</span></div>
     <div class="stat"><span class="num">178</span><span class="label">테스트 케이스 · 2,629 라인</span></div>
     <div class="stat"><span class="num">82%</span><span class="label">테스트 커버리지 (backend + ai_models)</span></div>
     <div class="stat"><span class="num">28</span><span class="label">원인까지 적어둔 버그</span></div>
@@ -1085,7 +1085,7 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
   </div>
   <p class="foot">
     성능 — 로그인 페이지 787KB → 34KB(Tailwind Play CDN을 CLI 빌드 CSS로 교체 + 이미지 내재화 + 압축), 뉴스 판별 16초 → 1.3초, 영상 판정 13.3초 → 6.1초<br>
-    코드량 — 소스 3,515줄 · 테스트 2,629줄 · 화면(템플릿·JS·CSS) 3,391줄 · 측정 스크립트 291줄
+    코드량 — 소스 3,515줄 · 테스트 2,629줄 · 화면(템플릿·JS·CSS) 3,395줄 · 측정 스크립트 291줄
   </p>
 </section>
 
@@ -1110,8 +1110,10 @@ td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
       <div class="card" style="margin-top:20px;">
         <h3>지금 돌아가는 데모</h3>
         <p style="margin-top:8px;">
-          무료 티어라 컨테이너가 재시작되면 가입한 계정이나 올린 파일이 날아갈 수 있음.
+          DB를 컨테이너 밖으로 빼둬서 가입한 계정은 남지만, 올린 파일은 컨테이너가 재시작되면 사라짐.
+          무료 플랜이라 하루 한 번 멈추므로 첫 접속은 깨어날 때까지 잠깐 기다려야 할 수 있음.
           <b>이미지 판별은 키 없이 바로 눌러볼 수 있음</b>.
+          <br><span style="opacity:.7">port-0-truthlens-mscko82687e05bd3.sel3.cloudtype.app</span>
         </p>
       </div>
     </div>
